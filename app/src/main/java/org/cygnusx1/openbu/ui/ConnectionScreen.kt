@@ -1,5 +1,6 @@
 package org.cygnusx1.openbu.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -11,6 +12,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
@@ -43,31 +45,34 @@ fun ConnectionScreen(
     var serialNumber by rememberSaveable { mutableStateOf(savedSerialNumber) }
     val isConnecting = connectionState == ConnectionState.Connecting
 
-    val textFieldColors = OutlinedTextFieldDefaults.colors(
-        focusedTextColor = Color.Black,
-        unfocusedTextColor = Color.Black,
-    )
+    val textFieldColors = OutlinedTextFieldDefaults.colors()
 
-    val serialValid = serialNumber.length == 15
+    val isSerialLengthValid = serialNumber.length == 15
+    val hasValidSerialPrefix = listOf("00M", "03W", "01P", "01S").any { serialNumber.startsWith(it) }
+    val serialValid = isSerialLengthValid && hasValidSerialPrefix
+
     val allFieldsFilled = ip.isNotBlank() && accessCode.isNotBlank() && serialValid
 
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .padding(32.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
             text = "Openbu",
-            style = TextStyle(fontSize = 32.sp, color = Color.Black),
+            style = TextStyle(fontSize = 32.sp),
+            color = MaterialTheme.colorScheme.onBackground,
         )
 
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
             text = "Connect to your Bambu Lab P1S camera",
-            style = TextStyle(fontSize = 14.sp, color = Color.DarkGray),
+            style = TextStyle(fontSize = 14.sp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
         Spacer(modifier = Modifier.height(32.dp))
@@ -109,9 +114,14 @@ fun ConnectionScreen(
             value = serialNumber,
             onValueChange = { serialNumber = it.trim() },
             label = { Text("Printer Serial Number") },
+            isError = serialNumber.isNotBlank() && !serialValid,
             supportingText = {
                 if (serialNumber.isNotBlank() && !serialValid) {
-                    Text("Must be exactly 15 characters (currently ${serialNumber.length})", color = Color.Red)
+                    if (!isSerialLengthValid) {
+                        Text("Must be exactly 15 characters (currently ${serialNumber.length})", color = Color.Red)
+                    } else {
+                        Text("Serial number must start with 00M, 03W, 01P, or 01S.", color = Color.Red)
+                    }
                 }
             },
             singleLine = true,

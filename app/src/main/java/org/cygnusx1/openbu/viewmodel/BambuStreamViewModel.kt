@@ -8,6 +8,7 @@ import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import org.cygnusx1.openbu.network.BambuCameraClient
 import org.cygnusx1.openbu.network.BambuMqttClient
+import org.cygnusx1.openbu.network.PrinterStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -41,6 +42,9 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
 
     private val _isMqttConnected = MutableStateFlow(false)
     val isMqttConnected: StateFlow<Boolean> = _isMqttConnected.asStateFlow()
+
+    private val _printerStatus = MutableStateFlow(PrinterStatus())
+    val printerStatus: StateFlow<PrinterStatus> = _printerStatus.asStateFlow()
 
     private var client: BambuCameraClient? = null
     private var streamJob: Job? = null
@@ -122,6 +126,9 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
             }
             launch {
                 mqtt.lightOn.collect { _isLightOn.value = it }
+            }
+            launch {
+                mqtt.printerStatus.collect { _printerStatus.value = it }
             }
         }
     }

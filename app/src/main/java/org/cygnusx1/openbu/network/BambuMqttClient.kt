@@ -39,6 +39,9 @@ class BambuMqttClient(
     private val _connected = MutableStateFlow(false)
     val connected: StateFlow<Boolean> = _connected.asStateFlow()
 
+    private val _printerStatus = MutableStateFlow(PrinterStatus())
+    val printerStatus: StateFlow<PrinterStatus> = _printerStatus.asStateFlow()
+
     private var socket: SSLSocket? = null
     private var socketOutput: OutputStream? = null
 
@@ -191,6 +194,9 @@ class BambuMqttClient(
     private fun parseLightStatus(payload: String) {
         val root = JSONObject(payload)
         val print = root.optJSONObject("print") ?: return
+
+        parsePrinterStatus(print)
+
         val lights = print.optJSONArray("lights_report") ?: return
         for (i in 0 until lights.length()) {
             val light = lights.getJSONObject(i)
@@ -201,6 +207,55 @@ class BambuMqttClient(
                 return
             }
         }
+    }
+
+    private fun parsePrinterStatus(print: JSONObject) {
+        val current = _printerStatus.value
+
+        val gcodeState = print.optString("gcode_state", "").ifEmpty { current.gcodeState }
+        val nozzleTemper = if (print.has("nozzle_temper")) print.optDouble("nozzle_temper").toFloat() else current.nozzleTemper
+        val nozzleTarget = if (print.has("nozzle_target_temper")) print.optDouble("nozzle_target_temper").toFloat() else current.nozzleTargetTemper
+        val bedTemper = if (print.has("bed_temper")) print.optDouble("bed_temper").toFloat() else current.bedTemper
+        val bedTarget = if (print.has("bed_target_temper")) print.optDouble("bed_target_temper").toFloat() else current.bedTargetTemper
+        val heatbreakFan = print.optString("heatbreak_fan_speed", "").ifEmpty { current.heatbreakFanSpeed }
+        val coolingFan = print.optString("cooling_fan_speed", "").ifEmpty { current.coolingFanSpeed }
+        val bigFan1 = print.optString("big_fan1_speed", "").ifEmpty { current.bigFan1Speed }
+
+        var amsTemp = current.amsTemp
+        var amsHumidity = current.amsHumidity
+        var amsTrayType = current.amsTrayType
+        var amsTrayColor = current.amsTrayColor
+
+        val ams = print.optJSONObject("ams")
+        if (ams != null) {
+            val amsArray = ams.optJSONArray("ams")
+            if (amsArray != null && amsArray.length() > 0) {
+                val ams0 = amsArray.getJSONObject(0)
+                amsTemp = ams0.optString("temp", amsTemp)
+                amsHumidity = ams0.optString("humidity_raw", amsHumidity)
+                val trays = ams0.optJSONArray("tray")
+                if (trays != null && trays.length() > 0) {
+                    val tray0 = trays.getJSONObject(0)
+                    amsTrayType = tray0.optString("tray_type", amsTrayType)
+                    amsTrayColor = tray0.optString("tray_color", amsTrayColor)
+                }
+            }
+        }
+
+        _printerStatus.value = PrinterStatus(
+            gcodeState = gcodeState,
+            nozzleTemper = nozzleTemper,
+            nozzleTargetTemper = nozzleTarget,
+            bedTemper = bedTemper,
+            bedTargetTemper = bedTarget,
+            heatbreakFanSpeed = heatbreakFan,
+            coolingFanSpeed = coolingFan,
+            bigFan1Speed = bigFan1,
+            amsTemp = amsTemp,
+            amsHumidity = amsHumidity,
+            amsTrayType = amsTrayType,
+            amsTrayColor = amsTrayColor,
+        )
     }
 
     // --- MQTT packet builders (each returns a complete packet as byte array) ---

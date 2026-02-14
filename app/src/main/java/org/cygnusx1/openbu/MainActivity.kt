@@ -13,6 +13,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import org.cygnusx1.openbu.ui.ConnectionScreen
+import org.cygnusx1.openbu.network.PrinterStatus
 import org.cygnusx1.openbu.ui.DashboardScreen
 import org.cygnusx1.openbu.ui.StreamScreen
 import org.cygnusx1.openbu.ui.theme.OpenbuTheme
@@ -33,6 +34,7 @@ class MainActivity : ComponentActivity() {
                 val errorMessage by viewModel.errorMessage.collectAsState()
                 val isLightOn by viewModel.isLightOn.collectAsState()
                 val isMqttConnected by viewModel.isMqttConnected.collectAsState()
+                val printerStatus by viewModel.printerStatus.collectAsState()
 
                 var showFullscreen by rememberSaveable { mutableStateOf(false) }
 
@@ -52,6 +54,7 @@ class MainActivity : ComponentActivity() {
                             fps = fps,
                             isLightOn = isLightOn,
                             isMqttConnected = isMqttConnected,
+                            printerStatus = printerStatus,
                             onToggleLight = { viewModel.toggleLight(it) },
                             onOpenFullscreen = { showFullscreen = true },
                             onDisconnect = {
