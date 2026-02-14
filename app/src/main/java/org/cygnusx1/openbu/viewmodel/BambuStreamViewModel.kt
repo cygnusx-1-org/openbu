@@ -68,6 +68,15 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
     fun getSavedAccessCode(): String = prefs.getString("access_code", "") ?: ""
     fun getSavedSerialNumber(): String = prefs.getString("serial_number", "") ?: ""
 
+    fun autoConnectIfSaved() {
+        val ip = getSavedIp()
+        val accessCode = getSavedAccessCode()
+        val serialNumber = getSavedSerialNumber()
+        if (ip.isNotBlank() && accessCode.isNotBlank() && serialNumber.length == 15) {
+            connect(ip, accessCode, serialNumber)
+        }
+    }
+
     private fun saveCredentials(ip: String, accessCode: String, serialNumber: String) {
         prefs.edit()
             .putString("ip", ip)

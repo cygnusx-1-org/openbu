@@ -6,6 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -28,6 +29,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             OpenbuTheme {
                 val viewModel: BambuStreamViewModel = viewModel()
+                LaunchedEffect(Unit) { viewModel.autoConnectIfSaved() }
                 val connectionState by viewModel.connectionState.collectAsState()
                 val frame by viewModel.frame.collectAsState()
                 val fps by viewModel.fps.collectAsState()
