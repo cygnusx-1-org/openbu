@@ -11,6 +11,7 @@ import org.cygnusx1.openbu.network.BambuMqttClient
 import org.cygnusx1.openbu.network.PrinterStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -50,6 +51,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
     private var streamJob: Job? = null
     private var mqttClient: BambuMqttClient? = null
     private var mqttJob: Job? = null
+    private var userDisconnected = false
 
     private val prefs by lazy {
         val masterKey = MasterKey.Builder(application)
@@ -90,6 +92,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
             _connectionState.value == ConnectionState.Connected
         ) return
 
+        userDisconnected = false
         saveCredentials(ip, accessCode, serialNumber)
         _connectionState.value = ConnectionState.Connecting
         _errorMessage.value = null
@@ -119,8 +122,11 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
                 }
                 _connectionState.value = ConnectionState.Disconnected
             } catch (e: Exception) {
-                _errorMessage.value = e.message ?: "Connection failed"
+                _errorMessage.value = "Connection to printer failed"
                 _connectionState.value = ConnectionState.Error
+                if (!userDisconnected) {
+                    reconnect()
+                }
             }
         }
 
@@ -148,7 +154,17 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
-    fun disconnect() {
+    private fun reconnect() {
+        cleanupConnections()
+        viewModelScope.launch {
+            delay(2000)
+            if (!userDisconnected) {
+                autoConnectIfSaved()
+            }
+        }
+    }
+
+    private fun cleanupConnections() {
         streamJob?.cancel()
         streamJob = null
         mqttJob?.cancel()
@@ -161,6 +177,11 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         _fps.value = 0f
         _isLightOn.value = null
         _isMqttConnected.value = false
+    }
+
+    fun disconnect() {
+        userDisconnected = true
+        cleanupConnections()
         _connectionState.value = ConnectionState.Disconnected
     }
 
