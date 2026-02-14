@@ -20,10 +20,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -49,6 +53,7 @@ fun DashboardScreen(
     printerStatus: PrinterStatus,
     onToggleLight: (Boolean) -> Unit,
     onOpenFullscreen: () -> Unit,
+    onOpenSettings: () -> Unit,
     onDisconnect: () -> Unit,
 ) {
     Column(
@@ -61,11 +66,24 @@ fun DashboardScreen(
     ) {
         Spacer(modifier = Modifier.height(48.dp))
 
-        Text(
-            text = "Openbu",
-            style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.onBackground,
-        )
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = "Openbu",
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.align(Alignment.Center),
+            )
+            IconButton(
+                onClick = onOpenSettings,
+                modifier = Modifier.align(Alignment.CenterEnd),
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Settings,
+                    contentDescription = "Settings",
+                    tint = MaterialTheme.colorScheme.onBackground,
+                )
+            }
+        }
 
         Spacer(modifier = Modifier.height(24.dp))
 

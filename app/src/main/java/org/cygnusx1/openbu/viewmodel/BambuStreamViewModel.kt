@@ -1,6 +1,7 @@
 package org.cygnusx1.openbu.viewmodel
 
 import android.app.Application
+import android.content.Intent
 import android.graphics.Bitmap
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -9,6 +10,7 @@ import androidx.security.crypto.MasterKey
 import org.cygnusx1.openbu.network.BambuCameraClient
 import org.cygnusx1.openbu.network.BambuMqttClient
 import org.cygnusx1.openbu.network.PrinterStatus
+import org.cygnusx1.openbu.service.ConnectionForegroundService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -47,6 +49,9 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
     private val _printerStatus = MutableStateFlow(PrinterStatus())
     val printerStatus: StateFlow<PrinterStatus> = _printerStatus.asStateFlow()
 
+    private val _keepConnectionInBackground = MutableStateFlow(true)
+    val keepConnectionInBackground: StateFlow<Boolean> = _keepConnectionInBackground.asStateFlow()
+
     private var client: BambuCameraClient? = null
     private var streamJob: Job? = null
     private var mqttClient: BambuMqttClient? = null
@@ -70,12 +75,27 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
     fun getSavedAccessCode(): String = prefs.getString("access_code", "") ?: ""
     fun getSavedSerialNumber(): String = prefs.getString("serial_number", "") ?: ""
 
+    init {
+        _keepConnectionInBackground.value = prefs.getBoolean("keep_connection_bg", true)
+    }
+
     fun autoConnectIfSaved() {
         val ip = getSavedIp()
         val accessCode = getSavedAccessCode()
         val serialNumber = getSavedSerialNumber()
         if (ip.isNotBlank() && accessCode.isNotBlank() && serialNumber.length == 15) {
             connect(ip, accessCode, serialNumber)
+        }
+    }
+
+    fun setKeepConnectionInBackground(enabled: Boolean) {
+        _keepConnectionInBackground.value = enabled
+        prefs.edit().putBoolean("keep_connection_bg", enabled).apply()
+        val app = getApplication<Application>()
+        if (enabled && _connectionState.value == ConnectionState.Connected) {
+            app.startForegroundService(Intent(app, ConnectionForegroundService::class.java))
+        } else if (!enabled) {
+            app.stopService(Intent(app, ConnectionForegroundService::class.java))
         }
     }
 
@@ -108,6 +128,10 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
                 bambuClient.frameFlow().collect { bitmap ->
                     if (_connectionState.value != ConnectionState.Connected) {
                         _connectionState.value = ConnectionState.Connected
+                        if (_keepConnectionInBackground.value) {
+                            val app = getApplication<Application>()
+                            app.startForegroundService(Intent(app, ConnectionForegroundService::class.java))
+                        }
                     }
                     _frame.value = bitmap
 
@@ -179,9 +203,15 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         _isMqttConnected.value = false
     }
 
+    private fun stopForegroundService() {
+        val app = getApplication<Application>()
+        app.stopService(Intent(app, ConnectionForegroundService::class.java))
+    }
+
     fun disconnect() {
         userDisconnected = true
         cleanupConnections()
+        stopForegroundService()
         _connectionState.value = ConnectionState.Disconnected
     }
 

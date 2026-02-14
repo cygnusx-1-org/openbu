@@ -14,8 +14,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import org.cygnusx1.openbu.ui.ConnectionScreen
-import org.cygnusx1.openbu.network.PrinterStatus
 import org.cygnusx1.openbu.ui.DashboardScreen
+import org.cygnusx1.openbu.ui.SettingsScreen
 import org.cygnusx1.openbu.ui.StreamScreen
 import org.cygnusx1.openbu.ui.theme.OpenbuTheme
 import org.cygnusx1.openbu.viewmodel.BambuStreamViewModel
@@ -37,10 +37,20 @@ class MainActivity : ComponentActivity() {
                 val isLightOn by viewModel.isLightOn.collectAsState()
                 val isMqttConnected by viewModel.isMqttConnected.collectAsState()
                 val printerStatus by viewModel.printerStatus.collectAsState()
+                val keepConnectionInBackground by viewModel.keepConnectionInBackground.collectAsState()
 
                 var showFullscreen by rememberSaveable { mutableStateOf(false) }
+                var showSettings by rememberSaveable { mutableStateOf(false) }
 
                 when {
+                    connectionState == ConnectionState.Connected && showSettings -> {
+                        BackHandler { showSettings = false }
+                        SettingsScreen(
+                            keepConnectionInBackground = keepConnectionInBackground,
+                            onKeepConnectionChanged = { viewModel.setKeepConnectionInBackground(it) },
+                            onBack = { showSettings = false },
+                        )
+                    }
                     connectionState == ConnectionState.Connected && showFullscreen -> {
                         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                         BackHandler { showFullscreen = false }
@@ -59,8 +69,10 @@ class MainActivity : ComponentActivity() {
                             printerStatus = printerStatus,
                             onToggleLight = { viewModel.toggleLight(it) },
                             onOpenFullscreen = { showFullscreen = true },
+                            onOpenSettings = { showSettings = true },
                             onDisconnect = {
                                 showFullscreen = false
+                                showSettings = false
                                 viewModel.disconnect()
                                 window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                             },
@@ -69,6 +81,7 @@ class MainActivity : ComponentActivity() {
                     else -> {
                         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                         showFullscreen = false
+                        showSettings = false
                         ConnectionScreen(
                             savedIp = viewModel.getSavedIp(),
                             savedAccessCode = viewModel.getSavedAccessCode(),
