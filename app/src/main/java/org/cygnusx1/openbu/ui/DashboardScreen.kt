@@ -125,6 +125,37 @@ fun DashboardScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // Chamber light control
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "Chamber Light",
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+
+                if (isMqttConnected && isLightOn == null) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                } else {
+                    Switch(
+                        checked = isLightOn == true,
+                        onCheckedChange = { onToggleLight(it) },
+                        enabled = isMqttConnected && isLightOn != null,
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
         // Status
         StatusCard(title = "Status", value = printerStatus.gcodeState)
 
@@ -170,37 +201,6 @@ fun DashboardScreen(
         // AMS card
         if (printerStatus.amsTemp.isNotEmpty()) {
             AmsCard(printerStatus)
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Chamber light control
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = "Chamber Light",
-                    style = MaterialTheme.typography.bodyLarge,
-                )
-
-                if (isMqttConnected && isLightOn == null) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
-                } else {
-                    Switch(
-                        checked = isLightOn == true,
-                        onCheckedChange = { onToggleLight(it) },
-                        enabled = isMqttConnected && isLightOn != null,
-                    )
-                }
-            }
         }
 
         Spacer(modifier = Modifier.height(32.dp))
