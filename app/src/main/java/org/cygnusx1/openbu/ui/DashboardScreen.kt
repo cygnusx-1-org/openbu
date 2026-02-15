@@ -22,8 +22,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -54,7 +52,6 @@ fun DashboardScreen(
     onToggleLight: (Boolean) -> Unit,
     onOpenFullscreen: () -> Unit,
     onOpenSettings: () -> Unit,
-    onDisconnect: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -204,19 +201,6 @@ fun DashboardScreen(
                     )
                 }
             }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Disconnect button
-        Button(
-            onClick = onDisconnect,
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.error,
-            ),
-        ) {
-            Text("Disconnect")
         }
 
         Spacer(modifier = Modifier.height(32.dp))

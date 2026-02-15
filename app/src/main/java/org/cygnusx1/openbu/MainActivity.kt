@@ -61,6 +61,12 @@ class MainActivity : ComponentActivity() {
                     }
                     connectionState == ConnectionState.Connected -> {
                         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                        BackHandler {
+                            showFullscreen = false
+                            showSettings = false
+                            viewModel.disconnect()
+                            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                        }
                         DashboardScreen(
                             frame = frame,
                             fps = fps,
@@ -70,12 +76,6 @@ class MainActivity : ComponentActivity() {
                             onToggleLight = { viewModel.toggleLight(it) },
                             onOpenFullscreen = { showFullscreen = true },
                             onOpenSettings = { showSettings = true },
-                            onDisconnect = {
-                                showFullscreen = false
-                                showSettings = false
-                                viewModel.disconnect()
-                                window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-                            },
                         )
                     }
                     else -> {

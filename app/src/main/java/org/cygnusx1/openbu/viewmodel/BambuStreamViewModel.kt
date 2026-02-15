@@ -11,6 +11,7 @@ import org.cygnusx1.openbu.network.BambuCameraClient
 import org.cygnusx1.openbu.network.BambuMqttClient
 import org.cygnusx1.openbu.network.PrinterStatus
 import org.cygnusx1.openbu.service.ConnectionForegroundService
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -145,10 +146,12 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
                     }
                 }
                 _connectionState.value = ConnectionState.Disconnected
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                _errorMessage.value = "Connection to printer failed"
-                _connectionState.value = ConnectionState.Error
                 if (!userDisconnected) {
+                    _errorMessage.value = "Connection to printer failed"
+                    _connectionState.value = ConnectionState.Error
                     reconnect()
                 }
             }
@@ -193,10 +196,14 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         streamJob = null
         mqttJob?.cancel()
         mqttJob = null
-        client?.close()
+        val cam = client
+        val mqtt = mqttClient
         client = null
-        mqttClient?.close()
         mqttClient = null
+        viewModelScope.launch(Dispatchers.IO) {
+            cam?.close()
+            mqtt?.close()
+        }
         _frame.value = null
         _fps.value = 0f
         _isLightOn.value = null
@@ -212,6 +219,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         userDisconnected = true
         cleanupConnections()
         stopForegroundService()
+        _errorMessage.value = null
         _connectionState.value = ConnectionState.Disconnected
     }
 
