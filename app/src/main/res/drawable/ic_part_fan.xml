@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Rounded square housing -->
+    <path
+        android:strokeColor="#000000"
+        android:strokeWidth="1.8"
+        android:fillColor="#00000000"
+        android:pathData="M5,3 L19,3 Q21,3 21,5 L21,19 Q21,21 19,21 L5,21 Q3,21 3,19 L3,5 Q3,3 5,3 Z" />
+    <!-- Circle around blades -->
+    <path
+        android:strokeColor="#000000"
+        android:strokeWidth="1.2"
+        android:fillColor="#00000000"
+        android:pathData="M12,12 m-7.5,0 a7.5,7.5 0 1,1 15,0 a7.5,7.5 0 1,1 -15,0" />
+    <!-- Center hub -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M12,12 m-2,0 a2,2 0 1,1 4,0 a2,2 0 1,1 -4,0" />
+    <!-- Blade top-right -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M13,10 Q17,4 19,6 Q21,8 15,11 Z" />
+    <!-- Blade bottom-right -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M14,13 Q20,17 18,19 Q16,21 13,15 Z" />
+    <!-- Blade bottom-left -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M11,14 Q7,20 5,18 Q3,16 9,13 Z" />
+    <!-- Blade top-left -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M10,11 Q4,7 6,5 Q8,3 11,9 Z" />
+</vector>

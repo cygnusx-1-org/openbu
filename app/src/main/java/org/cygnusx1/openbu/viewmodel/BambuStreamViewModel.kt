@@ -9,12 +9,13 @@ import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import org.cygnusx1.openbu.network.BambuCameraClient
 import org.cygnusx1.openbu.network.BambuMqttClient
+import org.cygnusx1.openbu.network.BambuSsdpClient
+import org.cygnusx1.openbu.network.DiscoveredPrinter
 import org.cygnusx1.openbu.network.PrinterStatus
 import org.cygnusx1.openbu.service.ConnectionForegroundService
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -53,6 +54,9 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
     private val _keepConnectionInBackground = MutableStateFlow(true)
     val keepConnectionInBackground: StateFlow<Boolean> = _keepConnectionInBackground.asStateFlow()
 
+    private val ssdpClient = BambuSsdpClient()
+    val discoveredPrinters: StateFlow<List<DiscoveredPrinter>> = ssdpClient.discoveredPrinters
+
     private var client: BambuCameraClient? = null
     private var streamJob: Job? = null
     private var mqttClient: BambuMqttClient? = null
@@ -81,6 +85,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun autoConnectIfSaved() {
+        if (userDisconnected) return
         val ip = getSavedIp()
         val accessCode = getSavedAccessCode()
         val serialNumber = getSavedSerialNumber()
@@ -152,7 +157,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
                 if (!userDisconnected) {
                     _errorMessage.value = "Connection to printer failed"
                     _connectionState.value = ConnectionState.Error
-                    reconnect()
+                    cleanupConnections()
                 }
             }
         }
@@ -178,16 +183,6 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
     fun toggleLight(on: Boolean) {
         viewModelScope.launch(Dispatchers.IO) {
             mqttClient?.toggleLight(on)
-        }
-    }
-
-    private fun reconnect() {
-        cleanupConnections()
-        viewModelScope.launch {
-            delay(2000)
-            if (!userDisconnected) {
-                autoConnectIfSaved()
-            }
         }
     }
 
@@ -223,8 +218,17 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         _connectionState.value = ConnectionState.Disconnected
     }
 
+    fun startDiscovery() {
+        ssdpClient.startDiscovery(getApplication(), viewModelScope)
+    }
+
+    fun stopDiscovery() {
+        ssdpClient.stopDiscovery()
+    }
+
     override fun onCleared() {
         super.onCleared()
+        ssdpClient.stopDiscovery()
         disconnect()
     }
 }

@@ -36,10 +36,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import org.cygnusx1.openbu.R
 import org.cygnusx1.openbu.network.PrinterStatus
 
 @Composable
@@ -163,13 +165,15 @@ fun DashboardScreen(
 
         // Nozzle & Bed temps side by side
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            StatusCard(
+            IconStatusCard(
                 title = "Nozzle",
+                iconRes = R.drawable.ic_nozzle,
                 value = "%.1f / %.1f \u00B0C".format(printerStatus.nozzleTemper, printerStatus.nozzleTargetTemper),
                 modifier = Modifier.weight(1f),
             )
-            StatusCard(
+            IconStatusCard(
                 title = "Bed",
+                iconRes = R.drawable.ic_bed,
                 value = "%.1f / %.1f \u00B0C".format(printerStatus.bedTemper, printerStatus.bedTargetTemper),
                 modifier = Modifier.weight(1f),
             )
@@ -179,18 +183,21 @@ fun DashboardScreen(
 
         // Fan speeds
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            StatusCard(
+            IconStatusCard(
                 title = "Part fan",
+                iconRes = R.drawable.ic_part_fan,
                 value = "${fanSpeedPercent(printerStatus.heatbreakFanSpeed)}%",
                 modifier = Modifier.weight(1f),
             )
-            StatusCard(
+            IconStatusCard(
                 title = "Aux fan",
+                iconRes = R.drawable.ic_aux_fan,
                 value = "${fanSpeedPercent(printerStatus.coolingFanSpeed)}%",
                 modifier = Modifier.weight(1f),
             )
-            StatusCard(
+            IconStatusCard(
                 title = "Chamber fan",
+                iconRes = R.drawable.ic_chamber_fan,
                 value = "${fanSpeedPercent(printerStatus.bigFan1Speed)}%",
                 modifier = Modifier.weight(1f),
             )
@@ -229,6 +236,46 @@ private fun StatusCard(
                 text = value,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium,
+            )
+        }
+    }
+}
+
+@Composable
+private fun IconStatusCard(
+    title: String,
+    iconRes: Int,
+    value: String,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Icon(
+                painter = painterResource(id = iconRes),
+                contentDescription = title,
+                modifier = Modifier.size(28.dp),
+                tint = MaterialTheme.colorScheme.onSurface,
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = value,
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Medium,
+                textAlign = TextAlign.Center,
             )
         }
     }

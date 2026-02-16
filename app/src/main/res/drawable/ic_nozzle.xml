@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Heatsink block -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M8,2 L16,2 L16,5 L8,5 Z" />
+    <!-- Fins -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M7,3 L8,3 L8,4 L7,4 Z" />
+    <path
+        android:fillColor="#000000"
+        android:pathData="M16,3 L17,3 L17,4 L16,4 Z" />
+    <!-- Shaft -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M10,5 L14,5 L14,11 L10,11 Z" />
+    <!-- Nozzle taper -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M10,11 L14,11 L12.5,15 L11.5,15 Z" />
+    <!-- Extruded filament curl -->
+    <path
+        android:strokeColor="#000000"
+        android:strokeWidth="1.5"
+        android:fillColor="#00000000"
+        android:pathData="M12,16 Q14,18 12,19.5 Q10,21 12,22" />
+</vector>

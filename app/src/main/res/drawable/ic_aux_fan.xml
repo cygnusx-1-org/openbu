@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Tall vertical box -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M4,2 L12,2 L12,22 L4,22 Z" />
+    <!-- Vent slits on box -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1"
+        android:fillColor="#00000000"
+        android:pathData="M6,5 L10,5" />
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1"
+        android:fillColor="#00000000"
+        android:pathData="M6,8 L10,8" />
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1"
+        android:fillColor="#00000000"
+        android:pathData="M6,11 L10,11" />
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1"
+        android:fillColor="#00000000"
+        android:pathData="M6,14 L10,14" />
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1"
+        android:fillColor="#00000000"
+        android:pathData="M6,17 L10,17" />
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1"
+        android:fillColor="#00000000"
+        android:pathData="M6,20 L10,20" />
+    <!-- Small air waves at top right -->
+    <path
+        android:strokeColor="#000000"
+        android:strokeWidth="1.2"
+        android:fillColor="#00000000"
+        android:pathData="M13,4 Q14.5,5 13,6" />
+    <path
+        android:strokeColor="#000000"
+        android:strokeWidth="1.2"
+        android:fillColor="#00000000"
+        android:pathData="M13,7.5 Q14.5,8.5 13,9.5" />
+</vector>

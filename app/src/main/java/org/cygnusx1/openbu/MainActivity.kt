@@ -38,6 +38,7 @@ class MainActivity : ComponentActivity() {
                 val isMqttConnected by viewModel.isMqttConnected.collectAsState()
                 val printerStatus by viewModel.printerStatus.collectAsState()
                 val keepConnectionInBackground by viewModel.keepConnectionInBackground.collectAsState()
+                val discoveredPrinters by viewModel.discoveredPrinters.collectAsState()
 
                 var showFullscreen by rememberSaveable { mutableStateOf(false) }
                 var showSettings by rememberSaveable { mutableStateOf(false) }
@@ -88,6 +89,9 @@ class MainActivity : ComponentActivity() {
                             savedSerialNumber = viewModel.getSavedSerialNumber(),
                             connectionState = connectionState,
                             errorMessage = errorMessage,
+                            discoveredPrinters = discoveredPrinters,
+                            onStartDiscovery = { viewModel.startDiscovery() },
+                            onStopDiscovery = { viewModel.stopDiscovery() },
                             onConnect = { ip, accessCode, serialNumber ->
                                 viewModel.connect(ip, accessCode, serialNumber)
                             },
