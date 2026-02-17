@@ -19,7 +19,7 @@ I am currently trying to workaround this with a program that mocks the [MQTT](ht
 
 This means user testing of every possible configuration would be very helpful, and then open [issues](https://github.com/cygnusx-1-org/openbu/issues).
 
-I have currently tested this on a [Google Pixel 8 Pro](https://www.gsmarena.com/google_pixel_8_pro-12545.php) running [Android 16](https://en.wikipedia.org/wiki/Android_16). The current minimum [Android](https://en.wikipedia.org/wiki/Android_(operating_system)) version is [8/Oreo])https://en.wikipedia.org/wiki/Android_Oreo).
+I have currently tested this on a [Google Pixel 8 Pro](https://www.gsmarena.com/google_pixel_8_pro-12545.php) running [Android 16](https://en.wikipedia.org/wiki/Android_16). The current minimum [Android](https://en.wikipedia.org/wiki/Android_(operating_system)) version is [8/Oreo](https://en.wikipedia.org/wiki/Android_Oreo).
 
 I am strongly considering adding this to the [Google Play Store](https://play.google.com/store/apps?hl=en_US), but we will see. They sometimes make that a challenge. I already have one app in the store.
 
