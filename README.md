@@ -44,6 +44,8 @@ I am strongly considering adding this to the [Google Play Store](https://play.go
 * Shows job status including layers, time left, estimated time, job name, and percentage of job done
 * Shows status of the nozzle, bed, part fan, aux fan, and chamber fan
 
+[Feature requests](github.com/cygnusx-1-org/openbu/issues) are welcome.
+
 ## Screenshots
 <p align="center">
 <img src="screenshots/actively-printing.png" width="180">
