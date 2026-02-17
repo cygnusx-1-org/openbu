@@ -105,7 +105,7 @@ fun ConnectionScreen(
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Connect to your Bambu Lab printer in Developer Mode.",
+            text = "Connect to your Bambu Lab printers in Developer Mode.",
             style = TextStyle(fontSize = 14.sp),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
