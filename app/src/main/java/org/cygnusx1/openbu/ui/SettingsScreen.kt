@@ -44,6 +44,10 @@ fun SettingsScreen(
     onRtspUrlChanged: (String) -> Unit,
     forceDarkMode: Boolean,
     onForceDarkModeChanged: (Boolean) -> Unit,
+    debugLogging: Boolean,
+    onDebugLoggingChanged: (Boolean) -> Unit,
+    extendedDebugLogging: Boolean,
+    onExtendedDebugLoggingChanged: (Boolean) -> Unit,
     onBack: () -> Unit,
 ) {
     var showAboutDialog by remember { mutableStateOf(false) }
@@ -205,6 +209,63 @@ fun SettingsScreen(
                 Switch(
                     checked = forceDarkMode,
                     onCheckedChange = onForceDarkModeChanged,
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Debug logging toggle
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Debug logging",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onBackground,
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Log MQTT data structures to Logcat",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(
+                    checked = debugLogging,
+                    onCheckedChange = onDebugLoggingChanged,
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Extended debug logging toggle (depends on debug logging)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Extended debug logging",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = if (debugLogging) {
+                            MaterialTheme.colorScheme.onBackground
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Log camera stream details to Logcat",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(
+                    checked = extendedDebugLogging,
+                    onCheckedChange = onExtendedDebugLoggingChanged,
+                    enabled = debugLogging,
                 )
             }
         }

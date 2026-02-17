@@ -66,6 +66,12 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
     private val _forceDarkMode = MutableStateFlow(false)
     val forceDarkMode: StateFlow<Boolean> = _forceDarkMode.asStateFlow()
 
+    private val _debugLogging = MutableStateFlow(false)
+    val debugLogging: StateFlow<Boolean> = _debugLogging.asStateFlow()
+
+    private val _extendedDebugLogging = MutableStateFlow(false)
+    val extendedDebugLogging: StateFlow<Boolean> = _extendedDebugLogging.asStateFlow()
+
     private val ssdpClient = BambuSsdpClient()
     val discoveredPrinters: StateFlow<List<DiscoveredPrinter>> = ssdpClient.discoveredPrinters
 
@@ -97,6 +103,8 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         _rtspEnabled.value = prefs.getBoolean("rtsp_enabled", false)
         _rtspUrl.value = prefs.getString("rtsp_url", "") ?: ""
         _forceDarkMode.value = prefs.getBoolean("force_dark_mode", false)
+        _debugLogging.value = prefs.getBoolean("debug_logging", false)
+        _extendedDebugLogging.value = prefs.getBoolean("extended_debug_logging", false)
     }
 
     fun setKeepConnectionInBackground(enabled: Boolean) {
@@ -130,6 +138,21 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         prefs.edit().putBoolean("force_dark_mode", enabled).apply()
     }
 
+    fun setDebugLogging(enabled: Boolean) {
+        _debugLogging.value = enabled
+        prefs.edit().putBoolean("debug_logging", enabled).apply()
+        mqttClient?.debugLogging = enabled
+        if (!enabled) {
+            setExtendedDebugLogging(false)
+        }
+    }
+
+    fun setExtendedDebugLogging(enabled: Boolean) {
+        _extendedDebugLogging.value = enabled
+        prefs.edit().putBoolean("extended_debug_logging", enabled).apply()
+        client?.extendedDebugLogging = enabled
+    }
+
     private fun saveCredentials(ip: String, accessCode: String, serialNumber: String) {
         prefs.edit()
             .putString("access_code_$serialNumber", accessCode)
@@ -147,6 +170,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         _errorMessage.value = null
 
         val bambuClient = BambuCameraClient(ip, accessCode)
+        bambuClient.extendedDebugLogging = _extendedDebugLogging.value
         client = bambuClient
 
         streamJob = viewModelScope.launch {
@@ -187,6 +211,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
 
         // Start MQTT in separate coroutine (non-fatal)
         val mqtt = BambuMqttClient(ip, accessCode, serialNumber)
+        mqtt.debugLogging = _debugLogging.value
         mqttClient = mqtt
         mqtt.connect(viewModelScope)
 

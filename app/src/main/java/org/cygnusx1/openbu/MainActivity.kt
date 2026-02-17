@@ -49,6 +49,8 @@ class MainActivity : ComponentActivity() {
                 val showMainStream by viewModel.showMainStream.collectAsState()
                 val rtspEnabled by viewModel.rtspEnabled.collectAsState()
                 val rtspUrl by viewModel.rtspUrl.collectAsState()
+                val debugLogging by viewModel.debugLogging.collectAsState()
+                val extendedDebugLogging by viewModel.extendedDebugLogging.collectAsState()
                 val discoveredPrinters by viewModel.discoveredPrinters.collectAsState()
 
                 var showFullscreen by rememberSaveable { mutableStateOf(false) }
@@ -88,6 +90,10 @@ class MainActivity : ComponentActivity() {
                             onRtspUrlChanged = { viewModel.setRtspUrl(it) },
                             forceDarkMode = forceDarkMode,
                             onForceDarkModeChanged = { viewModel.setForceDarkMode(it) },
+                            debugLogging = debugLogging,
+                            onDebugLoggingChanged = { viewModel.setDebugLogging(it) },
+                            extendedDebugLogging = extendedDebugLogging,
+                            onExtendedDebugLoggingChanged = { viewModel.setExtendedDebugLogging(it) },
                             onBack = { showSettings = false },
                         )
                     }

@@ -42,13 +42,16 @@ class BambuMqttClient(
     private val _printerStatus = MutableStateFlow(PrinterStatus())
     val printerStatus: StateFlow<PrinterStatus> = _printerStatus.asStateFlow()
 
+    @Volatile
+    var debugLogging: Boolean = false
+
     private var socket: SSLSocket? = null
     private var socketOutput: OutputStream? = null
 
     fun connect(scope: CoroutineScope) {
         scope.launch(Dispatchers.IO) {
             try {
-                Log.d(TAG, "Connecting to MQTT broker at $ip:8883, serial: $serialNumber")
+                if (debugLogging) Log.d(TAG, "Connecting to MQTT broker at $ip:8883, serial: $serialNumber")
                 val sslSocket = createSslConnection()
                 socket = sslSocket
                 val input = DataInputStream(sslSocket.inputStream)
@@ -60,7 +63,7 @@ class BambuMqttClient(
                 val connectPacket = buildConnectPacket(clientId, "bblp", accessCode)
                 out.write(connectPacket)
                 out.flush()
-                Log.d(TAG, "Sent CONNECT packet (${connectPacket.size} bytes)")
+                if (debugLogging) Log.d(TAG, "Sent CONNECT packet (${connectPacket.size} bytes)")
 
                 // Read CONNACK
                 val connackType = input.readByte().toInt() and 0xFF
@@ -74,7 +77,7 @@ class BambuMqttClient(
                 if (returnCode != 0) {
                     throw IOException("CONNACK rejected: return code $returnCode")
                 }
-                Log.d(TAG, "MQTT CONNACK OK")
+                if (debugLogging) Log.d(TAG, "MQTT CONNACK OK")
                 _connected.value = true
 
                 // SUBSCRIBE to report topic — send as single write
@@ -82,7 +85,7 @@ class BambuMqttClient(
                 val subscribePacket = buildSubscribePacket(1, reportTopic)
                 out.write(subscribePacket)
                 out.flush()
-                Log.d(TAG, "Sent SUBSCRIBE to $reportTopic")
+                if (debugLogging) Log.d(TAG, "Sent SUBSCRIBE to $reportTopic")
 
                 // Read SUBACK
                 val subackType = input.readByte().toInt() and 0xFF
@@ -92,7 +95,7 @@ class BambuMqttClient(
                 if ((subackType shr 4) != 9) {
                     Log.w(TAG, "Expected SUBACK, got packet type ${subackType shr 4}")
                 } else {
-                    Log.d(TAG, "SUBACK received")
+                    if (debugLogging) Log.d(TAG, "SUBACK received")
                 }
 
                 // Request current status
@@ -112,7 +115,7 @@ class BambuMqttClient(
                             out.write(byteArrayOf(0xD0.toByte(), 0x00))
                             out.flush()
                         }
-                        else -> Log.d(TAG, "Received MQTT packet type $packetType, len=$remainLen")
+                        else -> if (debugLogging) Log.d(TAG, "Received MQTT packet type $packetType, len=$remainLen")
                     }
                 }
             } catch (e: Exception) {
@@ -134,7 +137,10 @@ class BambuMqttClient(
             val payloadOffset = 2 + topicLen
             if (payloadOffset > data.size) return
             val payload = String(data, payloadOffset, data.size - payloadOffset)
-            Log.d(TAG, "PUBLISH received (${data.size} bytes): ${payload.take(200)}")
+            if (debugLogging) Log.d(TAG, "PUBLISH received (${data.size} bytes): ${payload.take(200)}")
+            if (debugLogging) {
+                Log.d(TAG, "PUBLISH full payload:\n$payload")
+            }
             parseLightStatus(payload)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to parse PUBLISH", e)
@@ -159,7 +165,7 @@ class BambuMqttClient(
         }
         try {
             val topic = "device/$serialNumber/request"
-            Log.d(TAG, "Publishing light ${if (on) "on" else "off"} to $topic")
+            if (debugLogging) Log.d(TAG, "Publishing light ${if (on) "on" else "off"} to $topic")
             val packet = buildPublishPacket(topic, json.toString())
             synchronized(out) {
                 out.write(packet)
@@ -180,7 +186,7 @@ class BambuMqttClient(
         }
         try {
             val topic = "device/$serialNumber/request"
-            Log.d(TAG, "Requesting pushall on $topic")
+            if (debugLogging) Log.d(TAG, "Requesting pushall on $topic")
             val packet = buildPublishPacket(topic, json.toString())
             synchronized(out) {
                 out.write(packet)
@@ -193,6 +199,9 @@ class BambuMqttClient(
 
     private fun parseLightStatus(payload: String) {
         val root = JSONObject(payload)
+        if (debugLogging) {
+            Log.d(TAG, "MQTT JSON keys: ${root.keys().asSequence().toList()}")
+        }
         val print = root.optJSONObject("print") ?: return
 
         parsePrinterStatus(print)
@@ -202,7 +211,7 @@ class BambuMqttClient(
             val light = lights.getJSONObject(i)
             if (light.optString("node") == "chamber_light") {
                 val mode = light.optString("mode")
-                Log.d(TAG, "Chamber light status: $mode")
+                if (debugLogging) Log.d(TAG, "Chamber light status: $mode")
                 _lightOn.value = mode == "on"
                 return
             }
@@ -267,7 +276,7 @@ class BambuMqttClient(
             }
         }
 
-        _printerStatus.value = PrinterStatus(
+        val newStatus = PrinterStatus(
             gcodeState = gcodeState,
             gcodeFile = gcodeFile,
             mcPercent = mcPercent,
@@ -283,6 +292,11 @@ class BambuMqttClient(
             bigFan1Speed = bigFan1,
             amsUnits = amsUnits,
         )
+        _printerStatus.value = newStatus
+
+        if (debugLogging) {
+            Log.d(TAG, "PrinterStatus: $newStatus")
+        }
     }
 
     // --- MQTT packet builders (each returns a complete packet as byte array) ---
@@ -379,7 +393,7 @@ class BambuMqttClient(
             endpointIdentificationAlgorithm = null
         }
         sslSocket.startHandshake()
-        Log.d(TAG, "TLS handshake complete, cipher: ${sslSocket.session.cipherSuite}")
+        if (debugLogging) Log.d(TAG, "TLS handshake complete, cipher: ${sslSocket.session.cipherSuite}")
         return sslSocket
     }
 
