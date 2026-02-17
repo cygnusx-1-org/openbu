@@ -26,7 +26,8 @@ This is a brand new project, and has stated above I own a [P1S](https://bambulab
 
 I am currently trying to workaround this with a program that mocks the [MQTT](https://en.wikipedia.org/wiki/MQTT) output. My plan is to open source that too as another git repository.
 
-This means user testing of every possible configuration would be very helpful, and then open [issues](https://github.com/cygnusx-1-org/openbu/issues).
+> [!NOTE]
+> This means user testing of every possible configuration would be very helpful, and then open [issues](https://github.com/cygnusx-1-org/openbu/issues).
 
 I have currently tested this on a [Google Pixel 8 Pro](https://www.gsmarena.com/google_pixel_8_pro-12545.php) running [Android 16](https://en.wikipedia.org/wiki/Android_16). The current minimum [Android](https://en.wikipedia.org/wiki/Android_(operating_system)) version is [8/Oreo](https://en.wikipedia.org/wiki/Android_Oreo).
 
