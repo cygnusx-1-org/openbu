@@ -5,15 +5,15 @@
 
 <hr style="display: inline-block; width: 100%; border: 1px dotted #ff00cc;">
 
-Openbu is a open source Kotlin based Android app written for Bambu printers in [Developer Mode](https://help.simplyprint.io/en/article/bambu-lab-lan-only-mode-and-developer-mode-how-to-enable-xa0hch/).
+Openbu is a open source Kotlin based Android app written for [Bambu Lab](https://bambulab.com/en-us) printers in [Developer Mode](https://help.simplyprint.io/en/article/bambu-lab-lan-only-mode-and-developer-mode-how-to-enable-xa0hch/).
 
 ## Backstory aka Why not Handy or Lanbu?
-I own a P1S. I would have stuck with the older pre-1.08 firmware, but then I purchased a AMS-HT which needed 1.08+ firmware to be properly supported. I also wanted [OrcaSlicer](https://github.com/OrcaSlicer/OrcaSlicer) support under Linux, and there is no [Bambu Connect](https://wiki.bambulab.com/en/software/bambu-connect) for Linux. It has been "Under Development" for about a year.
+I own a [Bambu Lab](https://bambulab.com/en-us) [P1S](https://bambulab.com/en-us/p1). I would have stuck with the older pre-1.08 firmware, but then I purchased a [AMS HT](https://us.store.bambulab.com/products/ams-ht?from=home_web_top_navigation) which needed 1.08+ firmware to be properly supported. I also wanted [OrcaSlicer](https://github.com/OrcaSlicer/OrcaSlicer) support under Linux, and there is no [Bambu Connect](https://wiki.bambulab.com/en/software/bambu-connect) for Linux. It has been "Under Development" for about a year.
 
 I quickly found [Lanbu](https://play.google.com/store/apps/details?id=com.Glowbeast.LanBu&hl=en_US), but I have a few issues with it. It isn't open source, it isn't especially pretty, the author locked the video feature behind a paywall, and it doesn't auto-detect the printers on the network.
 
 ## Status
-This is a brand new project, and has stated above I own a P1S and a AMS-HT. This makes it harder to test and support A1, P2, X1, and H2 series printers. It also makes it harder to test and support the AMS and AMS 2 Pro.
+This is a brand new project, and has stated above I own a [P1S](https://bambulab.com/en-us/p1) and a [AMS HT](https://us.store.bambulab.com/products/ams-ht?from=home_web_top_navigation). This makes it harder to test and support A1, P2, X1, and H2 series printers. It also makes it harder to test and support the [AMS](https://us.store.bambulab.com/products/ams-multicolor-printing?from=home_web_top_navigation) and [AMS 2 Pro](https://us.store.bambulab.com/products/ams-2-pro?from=home_web_top_navigation).
 
 I am currently trying to workaround this with a program that mocks the MQTT output. My plan is to open source that too as another git repository.
 
@@ -28,7 +28,7 @@ I am strongly considering adding this to the [Google Play Store](https://play.go
 * Allows the user to add an external RTSP stream to the dashboard by entering a RTSP URL
 * Supports the A1/P1 series video stream based on JPEGs
 * Supports toggling the chamber light for the P1 series
-* AMS-HT, AMS, and AMS 2 Pro
+* [AMS HT](https://us.store.bambulab.com/products/ams-ht?from=home_web_top_navigation), [AMS](https://us.store.bambulab.com/products/ams-multicolor-printing?from=home_web_top_navigation), and [AMS 2 Pro](https://us.store.bambulab.com/products/ams-2-pro?from=home_web_top_navigation)
   - Knows the correct number of trays per model
   - Shows temperature, humidity, filament types, and filament colors
 * Shows job status including layers, time left, estimated time, job name, and percentage of job done
