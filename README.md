@@ -35,7 +35,11 @@ I am strongly considering adding this to the [Google Play Store](https://play.go
 * Shows status of the nozzle, bed, part fan, aux fan, and chamber fan
 
 ## Screenshots
-[Screenshots](https://github.com/cygnusx-1-org/openbu/tree/master/screenshots)
+<p align="center">
+<img src="screenshots/actively-printing.png" width="180">
+</p>
+
+[All screenshots](https://github.com/cygnusx-1-org/openbu/tree/master/screenshots)
 
 ## TODO
 * Better support multiple printers
