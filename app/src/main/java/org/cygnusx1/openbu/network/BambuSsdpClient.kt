@@ -46,6 +46,7 @@ class BambuSsdpClient {
     private val _discoveredPrinters = MutableStateFlow<List<DiscoveredPrinter>>(emptyList())
     val discoveredPrinters: StateFlow<List<DiscoveredPrinter>> = _discoveredPrinters.asStateFlow()
 
+    private val lastSeenMap = mutableMapOf<String, Long>() // serialNumber -> timestamp
     private var multicastLock: WifiManager.MulticastLock? = null
     private var listenJob: Job? = null
     private var msearchJob: Job? = null
@@ -115,8 +116,12 @@ class BambuSsdpClient {
             while (isActive) {
                 delay(10_000)
                 val now = System.currentTimeMillis()
-                _discoveredPrinters.value = _discoveredPrinters.value.filter {
-                    now - it.lastSeen < STALE_TIMEOUT_MS
+                val staleSerials = lastSeenMap.filter { now - it.value >= STALE_TIMEOUT_MS }.keys
+                if (staleSerials.isNotEmpty()) {
+                    staleSerials.forEach { lastSeenMap.remove(it) }
+                    _discoveredPrinters.value = _discoveredPrinters.value.filter {
+                        it.serialNumber !in staleSerials
+                    }
                 }
             }
         }
@@ -156,8 +161,9 @@ class BambuSsdpClient {
 
         val location = headers["location"]
         val ip = if (location != null) {
-            // Location is typically like "http://192.168.1.100/..."
-            try {
+            // Location can be a bare IP or a URL like "http://192.168.1.100/..."
+            val parsed = try { java.net.InetAddress.getByName(location)?.hostAddress } catch (_: Exception) { null }
+            parsed ?: try {
                 java.net.URI(location).host ?: senderIp
             } catch (_: Exception) {
                 senderIp
@@ -178,14 +184,12 @@ class BambuSsdpClient {
     }
 
     private fun addOrUpdatePrinter(printer: DiscoveredPrinter) {
-        val current = _discoveredPrinters.value.toMutableList()
-        val index = current.indexOfFirst { it.serialNumber == printer.serialNumber }
-        if (index >= 0) {
-            current[index] = printer.copy(lastSeen = System.currentTimeMillis())
-        } else {
-            current.add(printer)
+        lastSeenMap[printer.serialNumber] = System.currentTimeMillis()
+        val current = _discoveredPrinters.value
+        val exists = current.any { it.serialNumber == printer.serialNumber }
+        if (!exists) {
+            _discoveredPrinters.value = current + printer
         }
-        _discoveredPrinters.value = current
     }
 
     private fun findWifiInterface(): NetworkInterface? {

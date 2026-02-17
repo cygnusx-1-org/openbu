@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -41,7 +42,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.PlayerView
 import org.cygnusx1.openbu.R
+import org.cygnusx1.openbu.network.AmsUnit
 import org.cygnusx1.openbu.network.PrinterStatus
 
 @Composable
@@ -51,8 +56,11 @@ fun DashboardScreen(
     isLightOn: Boolean?,
     isMqttConnected: Boolean,
     printerStatus: PrinterStatus,
+    showMainStream: Boolean,
+    rtspPlayer: ExoPlayer?,
     onToggleLight: (Boolean) -> Unit,
     onOpenFullscreen: () -> Unit,
+    onOpenRtspFullscreen: () -> Unit,
     onOpenSettings: () -> Unit,
 ) {
     Column(
@@ -87,45 +95,53 @@ fun DashboardScreen(
         Spacer(modifier = Modifier.height(24.dp))
 
         // Mini video preview
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(16f / 9f)
-                    .background(Color.Black)
-                    .clickable { onOpenFullscreen() },
-                contentAlignment = Alignment.Center,
+        if (showMainStream) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
             ) {
-                if (frame != null) {
-                    Image(
-                        bitmap = frame.asImageBitmap(),
-                        contentDescription = "Camera preview",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Fit,
-                    )
-                }
-
-                // FPS badge
                 Box(
                     modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(8.dp)
-                        .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                        .fillMaxWidth()
+                        .aspectRatio(16f / 9f)
+                        .background(Color.Black)
+                        .clickable { onOpenFullscreen() },
+                    contentAlignment = Alignment.Center,
                 ) {
-                    Text(
-                        text = "%.1f FPS".format(fps),
-                        color = Color.White,
-                        fontSize = 12.sp,
-                    )
+                    if (frame != null) {
+                        Image(
+                            bitmap = frame.asImageBitmap(),
+                            contentDescription = "Camera preview",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Fit,
+                        )
+                    }
+
+                    // FPS badge
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(8.dp)
+                            .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                    ) {
+                        Text(
+                            text = "%.1f FPS".format(fps),
+                            color = Color.White,
+                            fontSize = 12.sp,
+                        )
+                    }
                 }
             }
+
+            Spacer(modifier = Modifier.height(16.dp))
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        // External RTSP stream
+        if (rtspPlayer != null) {
+            RtspStreamCard(player = rtspPlayer, onClick = onOpenRtspFullscreen)
+            Spacer(modifier = Modifier.height(16.dp))
+        }
 
         // Chamber light control
         Card(
@@ -159,7 +175,7 @@ fun DashboardScreen(
         Spacer(modifier = Modifier.height(8.dp))
 
         // Status
-        StatusCard(title = "Status", value = printerStatus.gcodeState)
+        PrintStatusCard(printerStatus = printerStatus)
 
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -205,9 +221,10 @@ fun DashboardScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // AMS card
-        if (printerStatus.amsTemp.isNotEmpty()) {
-            AmsCard(printerStatus)
+        // AMS cards
+        for (amsUnit in printerStatus.amsUnits) {
+            AmsCard(amsUnit)
+            Spacer(modifier = Modifier.height(8.dp))
         }
 
         Spacer(modifier = Modifier.height(32.dp))
@@ -215,28 +232,116 @@ fun DashboardScreen(
 }
 
 @Composable
-private fun StatusCard(
-    title: String,
-    value: String,
-    modifier: Modifier = Modifier,
-) {
+private fun PrintStatusCard(printerStatus: PrinterStatus) {
+    val stateLabel = when (printerStatus.gcodeState) {
+        "RUNNING" -> "Printing"
+        "PAUSE" -> "Paused"
+        "FINISH" -> "Finished"
+        "FAILED" -> "Failed"
+        "IDLE" -> "Idle"
+        "PREPARE" -> "Preparing"
+        else -> printerStatus.gcodeState
+    }
+
+    val remainingMin = printerStatus.mcRemainingTime
+    val percent = printerStatus.mcPercent
+    val totalMin = if (percent > 0) {
+        (remainingMin / (1f - percent / 100f)).toInt()
+    } else 0
+
+    fun formatTime(minutes: Int): String = when {
+        minutes >= 60 -> "%dh %dm".format(minutes / 60, minutes % 60)
+        minutes > 0 -> "%dm".format(minutes)
+        else -> ""
+    }
+
+    val timeText = when {
+        remainingMin > 0 && totalMin > 0 -> "${formatTime(remainingMin)} / ${formatTime(totalMin)}"
+        remainingMin > 0 -> formatTime(remainingMin)
+        else -> ""
+    }
+
+    val fileName = printerStatus.gcodeFile.substringAfterLast("/")
+
     Card(
-        modifier = modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
         ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                text = value,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium,
-            )
+            // State + remaining time
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stateLabel,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                )
+                if (timeText.isNotEmpty()) {
+                    Text(
+                        text = timeText,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
+
+            // Filename
+            if (fileName.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = fileName,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                )
+            }
+
+            // Progress bar with percentage and layer info
+            if (printerStatus.gcodeState == "RUNNING" || printerStatus.gcodeState == "PAUSE") {
+                Spacer(modifier = Modifier.height(10.dp))
+                val progressFraction = (percent / 100f).coerceIn(0f, 1f)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(32.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)),
+                ) {
+                    // Filled portion
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .fillMaxWidth(progressFraction)
+                            .background(MaterialTheme.colorScheme.primary),
+                    )
+                    // Labels on top
+                    Row(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = "$percent%",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimary,
+                        )
+                        Text(
+                            text = "Layer ${printerStatus.layerNum}/${printerStatus.totalLayerNum}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -282,7 +387,8 @@ private fun IconStatusCard(
 }
 
 @Composable
-private fun AmsCard(status: PrinterStatus) {
+private fun AmsCard(amsUnit: AmsUnit) {
+    val amsLabel = amsUnit.model.ifEmpty { "AMS" }
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -293,37 +399,63 @@ private fun AmsCard(status: PrinterStatus) {
                 .padding(horizontal = 16.dp, vertical = 12.dp),
         ) {
             Text(
-                text = "AMS 1  ${status.amsTemp}\u00B0C / Humidity ${status.amsHumidity}%",
+                text = "$amsLabel  ${amsUnit.temp}\u00B0C / Humidity ${amsUnit.humidity}%",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
-            if (status.amsTrayColor.isNotEmpty()) {
+            if (amsUnit.trays.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(8.dp))
 
-                Column(
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
+                    horizontalArrangement = Arrangement.SpaceEvenly,
                 ) {
-                    // Color circle
-                    Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clip(CircleShape)
-                            .background(parseHexColor(status.amsTrayColor)),
-                    )
-
-                    if (status.amsTrayType.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = status.amsTrayType,
-                            style = MaterialTheme.typography.bodySmall,
-                            textAlign = TextAlign.Center,
-                        )
+                    for (tray in amsUnit.trays) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(parseHexColor(tray.trayColor)),
+                            )
+                            if (tray.trayType.isNotEmpty()) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = tray.trayType,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    textAlign = TextAlign.Center,
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun RtspStreamCard(player: ExoPlayer, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth().clickable { onClick() },
+        shape = RoundedCornerShape(12.dp),
+    ) {
+        AndroidView(
+            factory = { ctx ->
+                PlayerView(ctx).apply {
+                    this.player = player
+                    useController = false
+                }
+            },
+            update = { view -> view.player = player },
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(16f / 9f)
+                .background(Color.Black),
+        )
     }
 }
 

@@ -213,6 +213,11 @@ class BambuMqttClient(
         val current = _printerStatus.value
 
         val gcodeState = print.optString("gcode_state", "").ifEmpty { current.gcodeState }
+        val gcodeFile = print.optString("gcode_file", "").ifEmpty { current.gcodeFile }
+        val mcPercent = if (print.has("mc_percent")) print.optInt("mc_percent") else current.mcPercent
+        val layerNum = if (print.has("layer_num")) print.optInt("layer_num") else current.layerNum
+        val totalLayerNum = if (print.has("total_layer_num")) print.optInt("total_layer_num") else current.totalLayerNum
+        val mcRemainingTime = if (print.has("mc_remaining_time")) print.optInt("mc_remaining_time") else current.mcRemainingTime
         val nozzleTemper = if (print.has("nozzle_temper")) print.optDouble("nozzle_temper").toFloat() else current.nozzleTemper
         val nozzleTarget = if (print.has("nozzle_target_temper")) print.optDouble("nozzle_target_temper").toFloat() else current.nozzleTargetTemper
         val bedTemper = if (print.has("bed_temper")) print.optDouble("bed_temper").toFloat() else current.bedTemper
@@ -221,29 +226,54 @@ class BambuMqttClient(
         val coolingFan = print.optString("cooling_fan_speed", "").ifEmpty { current.coolingFanSpeed }
         val bigFan1 = print.optString("big_fan1_speed", "").ifEmpty { current.bigFan1Speed }
 
-        var amsTemp = current.amsTemp
-        var amsHumidity = current.amsHumidity
-        var amsTrayType = current.amsTrayType
-        var amsTrayColor = current.amsTrayColor
+        var amsUnits = current.amsUnits
 
         val ams = print.optJSONObject("ams")
         if (ams != null) {
             val amsArray = ams.optJSONArray("ams")
             if (amsArray != null && amsArray.length() > 0) {
-                val ams0 = amsArray.getJSONObject(0)
-                amsTemp = ams0.optString("temp", amsTemp)
-                amsHumidity = ams0.optString("humidity_raw", amsHumidity)
-                val trays = ams0.optJSONArray("tray")
-                if (trays != null && trays.length() > 0) {
-                    val tray0 = trays.getJSONObject(0)
-                    amsTrayType = tray0.optString("tray_type", amsTrayType)
-                    amsTrayColor = tray0.optString("tray_color", amsTrayColor)
+                val units = mutableListOf<AmsUnit>()
+                for (i in 0 until amsArray.length()) {
+                    val amsObj = amsArray.getJSONObject(i)
+                    val trays = mutableListOf<AmsTray>()
+                    val trayArray = amsObj.optJSONArray("tray")
+                    if (trayArray != null) {
+                        for (j in 0 until trayArray.length()) {
+                            val trayObj = trayArray.getJSONObject(j)
+                            trays.add(AmsTray(
+                                id = trayObj.optString("id", ""),
+                                trayType = trayObj.optString("tray_type", ""),
+                                trayColor = trayObj.optString("tray_color", ""),
+                            ))
+                        }
+                    }
+                    val amsId = amsObj.optString("id", "0")
+                    val amsIdNum = amsId.toIntOrNull() ?: 0
+                    val hasDryTime = amsObj.has("dry_time")
+                    val amsModel = when {
+                        amsIdNum >= 128 -> "AMS-HT"
+                        hasDryTime -> "AMS-2-PRO"
+                        else -> "AMS"
+                    }
+                    units.add(AmsUnit(
+                        id = amsId,
+                        model = amsModel,
+                        temp = amsObj.optString("temp", ""),
+                        humidity = amsObj.optString("humidity_raw", ""),
+                        trays = trays,
+                    ))
                 }
+                amsUnits = units
             }
         }
 
         _printerStatus.value = PrinterStatus(
             gcodeState = gcodeState,
+            gcodeFile = gcodeFile,
+            mcPercent = mcPercent,
+            layerNum = layerNum,
+            totalLayerNum = totalLayerNum,
+            mcRemainingTime = mcRemainingTime,
             nozzleTemper = nozzleTemper,
             nozzleTargetTemper = nozzleTarget,
             bedTemper = bedTemper,
@@ -251,10 +281,7 @@ class BambuMqttClient(
             heatbreakFanSpeed = heatbreakFan,
             coolingFanSpeed = coolingFan,
             bigFan1Speed = bigFan1,
-            amsTemp = amsTemp,
-            amsHumidity = amsHumidity,
-            amsTrayType = amsTrayType,
-            amsTrayColor = amsTrayColor,
+            amsUnits = amsUnits,
         )
     }
 

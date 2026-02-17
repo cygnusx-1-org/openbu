@@ -56,20 +56,18 @@ import org.cygnusx1.openbu.viewmodel.ConnectionState
 
 @Composable
 fun ConnectionScreen(
-    savedIp: String,
-    savedAccessCode: String,
-    savedSerialNumber: String,
     connectionState: ConnectionState,
     errorMessage: String?,
     discoveredPrinters: List<DiscoveredPrinter>,
     onStartDiscovery: () -> Unit,
     onStopDiscovery: () -> Unit,
+    onGetSavedAccessCode: (serialNumber: String) -> String,
     onConnect: (ip: String, accessCode: String, serialNumber: String) -> Unit,
 ) {
-    var ip by rememberSaveable { mutableStateOf(savedIp) }
-    var accessCode by rememberSaveable { mutableStateOf(savedAccessCode) }
+    var ip by rememberSaveable { mutableStateOf("") }
+    var accessCode by rememberSaveable { mutableStateOf("") }
     var accessCodeVisible by rememberSaveable { mutableStateOf(false) }
-    var serialNumber by rememberSaveable { mutableStateOf(savedSerialNumber) }
+    var serialNumber by rememberSaveable { mutableStateOf("") }
     var manualMode by rememberSaveable { mutableStateOf(false) }
     var selectedSerial by rememberSaveable { mutableStateOf<String?>(null) }
     val isConnecting = connectionState == ConnectionState.Connecting
@@ -237,13 +235,18 @@ fun ConnectionScreen(
                         .weight(1f, fill = false),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    items(discoveredPrinters, key = { it.serialNumber }) { printer ->
+                    items(
+                        discoveredPrinters.sortedByDescending { it.lastSeen },
+                        key = { it.serialNumber },
+                    ) { printer ->
                         val isSelected = selectedSerial == printer.serialNumber
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable(enabled = !isConnecting) {
                                     selectedSerial = printer.serialNumber
+                                    accessCode = onGetSavedAccessCode(printer.serialNumber)
+                                    accessCodeVisible = false
                                 }
                                 .then(
                                     if (isSelected) Modifier.border(
@@ -298,37 +301,39 @@ fun ConnectionScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            if (selectedPrinter != null) {
+                Spacer(modifier = Modifier.height(16.dp))
 
-            OutlinedTextField(
-                value = accessCode,
-                onValueChange = { accessCode = it.trim() },
-                label = { Text("Access Code") },
-                singleLine = true,
-                colors = textFieldColors,
-                visualTransformation = if (accessCodeVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                trailingIcon = {
-                    IconButton(onClick = { accessCodeVisible = !accessCodeVisible }) {
-                        Icon(
-                            imageVector = if (accessCodeVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
-                            contentDescription = if (accessCodeVisible) "Hide access code" else "Show access code",
-                        )
-                    }
-                },
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Password,
-                    imeAction = ImeAction.Done,
-                ),
-                keyboardActions = KeyboardActions(
-                    onDone = {
-                        if (canConnect && selectedPrinter != null) {
-                            onConnect(selectedPrinter.ip, accessCode, selectedPrinter.serialNumber)
+                OutlinedTextField(
+                    value = accessCode,
+                    onValueChange = { accessCode = it.trim() },
+                    label = { Text("Access Code") },
+                    singleLine = true,
+                    colors = textFieldColors,
+                    visualTransformation = if (accessCodeVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    trailingIcon = {
+                        IconButton(onClick = { accessCodeVisible = !accessCodeVisible }) {
+                            Icon(
+                                imageVector = if (accessCodeVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                                contentDescription = if (accessCodeVisible) "Hide access code" else "Show access code",
+                            )
                         }
                     },
-                ),
-                modifier = Modifier.fillMaxWidth(),
-                enabled = !isConnecting,
-            )
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Password,
+                        imeAction = ImeAction.Done,
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onDone = {
+                            if (canConnect) {
+                                onConnect(selectedPrinter.ip, accessCode, selectedPrinter.serialNumber)
+                            }
+                        },
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isConnecting,
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(24.dp))

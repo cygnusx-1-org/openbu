@@ -54,6 +54,18 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
     private val _keepConnectionInBackground = MutableStateFlow(true)
     val keepConnectionInBackground: StateFlow<Boolean> = _keepConnectionInBackground.asStateFlow()
 
+    private val _showMainStream = MutableStateFlow(true)
+    val showMainStream: StateFlow<Boolean> = _showMainStream.asStateFlow()
+
+    private val _rtspEnabled = MutableStateFlow(false)
+    val rtspEnabled: StateFlow<Boolean> = _rtspEnabled.asStateFlow()
+
+    private val _rtspUrl = MutableStateFlow("")
+    val rtspUrl: StateFlow<String> = _rtspUrl.asStateFlow()
+
+    private val _forceDarkMode = MutableStateFlow(false)
+    val forceDarkMode: StateFlow<Boolean> = _forceDarkMode.asStateFlow()
+
     private val ssdpClient = BambuSsdpClient()
     val discoveredPrinters: StateFlow<List<DiscoveredPrinter>> = ssdpClient.discoveredPrinters
 
@@ -76,22 +88,15 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         )
     }
 
-    fun getSavedIp(): String = prefs.getString("ip", "") ?: ""
-    fun getSavedAccessCode(): String = prefs.getString("access_code", "") ?: ""
-    fun getSavedSerialNumber(): String = prefs.getString("serial_number", "") ?: ""
+    fun getSavedAccessCode(serialNumber: String): String =
+        prefs.getString("access_code_$serialNumber", "") ?: ""
 
     init {
         _keepConnectionInBackground.value = prefs.getBoolean("keep_connection_bg", true)
-    }
-
-    fun autoConnectIfSaved() {
-        if (userDisconnected) return
-        val ip = getSavedIp()
-        val accessCode = getSavedAccessCode()
-        val serialNumber = getSavedSerialNumber()
-        if (ip.isNotBlank() && accessCode.isNotBlank() && serialNumber.length == 15) {
-            connect(ip, accessCode, serialNumber)
-        }
+        _showMainStream.value = prefs.getBoolean("show_main_stream", true)
+        _rtspEnabled.value = prefs.getBoolean("rtsp_enabled", false)
+        _rtspUrl.value = prefs.getString("rtsp_url", "") ?: ""
+        _forceDarkMode.value = prefs.getBoolean("force_dark_mode", false)
     }
 
     fun setKeepConnectionInBackground(enabled: Boolean) {
@@ -105,11 +110,29 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    fun setShowMainStream(enabled: Boolean) {
+        _showMainStream.value = enabled
+        prefs.edit().putBoolean("show_main_stream", enabled).apply()
+    }
+
+    fun setRtspEnabled(enabled: Boolean) {
+        _rtspEnabled.value = enabled
+        prefs.edit().putBoolean("rtsp_enabled", enabled).apply()
+    }
+
+    fun setRtspUrl(url: String) {
+        _rtspUrl.value = url
+        prefs.edit().putString("rtsp_url", url).apply()
+    }
+
+    fun setForceDarkMode(enabled: Boolean) {
+        _forceDarkMode.value = enabled
+        prefs.edit().putBoolean("force_dark_mode", enabled).apply()
+    }
+
     private fun saveCredentials(ip: String, accessCode: String, serialNumber: String) {
         prefs.edit()
-            .putString("ip", ip)
-            .putString("access_code", accessCode)
-            .putString("serial_number", serialNumber)
+            .putString("access_code_$serialNumber", accessCode)
             .apply()
     }
 

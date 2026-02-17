@@ -17,6 +17,7 @@ import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLSocket
 import javax.net.ssl.TrustManager
 import javax.net.ssl.X509TrustManager
+import android.util.Log
 import kotlin.coroutines.coroutineContext
 
 class BambuCameraClient(
@@ -29,18 +30,27 @@ class BambuCameraClient(
     private var socket: SSLSocket? = null
 
     fun frameFlow(): Flow<Bitmap> = flow {
+        Log.d(TAG, "Connecting to camera at $ip:$port")
         val sslSocket = connect()
         socket = sslSocket
+        Log.d(TAG, "TLS connected, sending auth payload")
         try {
             sendAuthPayload(sslSocket)
+            Log.d(TAG, "Auth payload sent, waiting for frames")
             val input = sslSocket.inputStream
             val buf = ByteArray(4096)
             val frameBuffer = ByteArrayOutputStream(256 * 1024)
             var inFrame = false
+            var totalBytesRead = 0L
+            var frameCount = 0
 
             while (coroutineContext.isActive) {
                 val bytesRead = input.read(buf)
                 if (bytesRead == -1) throw IOException("Stream closed unexpectedly")
+                totalBytesRead += bytesRead
+                if (totalBytesRead <= 8192 || totalBytesRead % 65536 == 0L) {
+                    Log.d(TAG, "Read $bytesRead bytes (total: $totalBytesRead, frames: $frameCount, inFrame: $inFrame)")
+                }
 
                 var i = 0
                 while (i < bytesRead) {
@@ -52,6 +62,7 @@ class BambuCameraClient(
                             buf[i + 2] == 0xFF.toByte() &&
                             buf[i + 3] == 0xE0.toByte()
                         ) {
+                            Log.d(TAG, "Found SOI at offset $i in chunk")
                             frameBuffer.reset()
                             frameBuffer.write(buf, i, bytesRead - i)
                             inFrame = true
@@ -66,9 +77,14 @@ class BambuCameraClient(
                         val eoiPos = findEoi(data)
                         if (eoiPos >= 0) {
                             val jpegData = data.copyOfRange(0, eoiPos + 2)
+                            Log.d(TAG, "Found EOI, JPEG size: ${jpegData.size} bytes")
                             val bitmap = BitmapFactory.decodeByteArray(jpegData, 0, jpegData.size)
                             if (bitmap != null) {
+                                frameCount++
+                                Log.d(TAG, "Frame $frameCount decoded: ${bitmap.width}x${bitmap.height}")
                                 emit(bitmap)
+                            } else {
+                                Log.w(TAG, "BitmapFactory.decodeByteArray returned null for ${jpegData.size} bytes (first bytes: ${jpegData.take(8).joinToString(" ") { "%02X".format(it) }})")
                             }
                             // Any bytes after EOI stay for next scan
                             frameBuffer.reset()
@@ -83,6 +99,7 @@ class BambuCameraClient(
                 }
             }
         } finally {
+            Log.d(TAG, "Frame flow ended")
             close()
         }
     }.flowOn(Dispatchers.IO)
@@ -144,6 +161,8 @@ class BambuCameraClient(
     }
 
     companion object {
+        private const val TAG = "BambuCamera"
+
         /** Find the last occurrence of FF D9 (JPEG EOI) in the byte array */
         private fun findEoi(data: ByteArray): Int {
             for (i in data.size - 2 downTo 0) {

@@ -15,7 +15,8 @@ private val LightColorScheme = lightColorScheme()
 
 @Composable
 fun OpenbuTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    overrideDeviceTheme: Boolean = false,
+    darkTheme: Boolean = isSystemInDarkTheme() xor overrideDeviceTheme,
     content: @Composable () -> Unit,
 ) {
     val colorScheme = when {
