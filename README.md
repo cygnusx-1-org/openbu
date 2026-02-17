@@ -1,4 +1,10 @@
 # Openbu
+<p align="center">
+<img src="app/src/main/ic_launcher-playstore.png" width="180">
+</p>
+
+<hr style="display: inline-block; width: 100%; border: 1px dotted #ff00cc;">
+
 Openbu is a open source Kotlin based Android app written for Bambu printers in [Developer Mode](https://help.simplyprint.io/en/article/bambu-lab-lan-only-mode-and-developer-mode-how-to-enable-xa0hch/).
 
 ## Backstory aka Why not Handy or Lanbu?
