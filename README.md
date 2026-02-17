@@ -56,7 +56,7 @@ I am strongly considering adding this to the [Google Play Store](https://play.go
 ## TODO
 * Better support multiple printers
 * Support multiple internal cameras
-* Support [RTSP](https://en.wikipedia.org/wiki/Real-Time_Streaming_Protocol) streams from non A1/P1 series internal cameras
+* Support [RTSP](https://en.wikipedia.org/wiki/Real-Time_Streaming_Protocol) streams from non-A1/P1 series internal cameras
 * Better overall support for non-P1 series printers
 * Nozzle controls
 * Speed control
