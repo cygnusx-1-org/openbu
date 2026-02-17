@@ -5,6 +5,15 @@
 
 <hr style="display: inline-block; width: 100%; border: 1px dotted #ff00cc;">
 
+<p align="center" style="margin-top: -2em;">
+  <a href="https://discord.gg/vDuSpJEDrW">
+    <picture>
+      <source height="24px" media="(prefers-color-scheme: dark)" srcset="/assets/icons/Discord.png" />
+      <img height="24px" src="/assets/icons/Discord.png" />
+    </picture>
+  </a>
+</p>
+
 Openbu is a open source [Kotlin](https://en.wikipedia.org/wiki/Kotlin) based [Android](https://en.wikipedia.org/wiki/Android_(operating_system)) app written for [Bambu Lab](https://bambulab.com/en-us) printers in [Developer Mode](https://help.simplyprint.io/en/article/bambu-lab-lan-only-mode-and-developer-mode-how-to-enable-xa0hch/).
 
 ## Backstory(aka Why not Handy or Lanbu?)
