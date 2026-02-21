@@ -236,6 +236,22 @@ class BambuMqttClient(
         val bigFan1 = print.optString("big_fan1_speed", "").ifEmpty { current.bigFan1Speed }
 
         var amsUnits = current.amsUnits
+        var vtTray = current.vtTray
+
+        val vtTrayObj = print.optJSONObject("vt_tray")
+        if (vtTrayObj != null) {
+            val trayType = vtTrayObj.optString("tray_type", "")
+            val trayColor = vtTrayObj.optString("tray_color", "")
+            vtTray = if (trayType.isNotEmpty()) {
+                AmsTray(
+                    id = vtTrayObj.optString("id", "254"),
+                    trayType = trayType,
+                    trayColor = trayColor,
+                )
+            } else {
+                null
+            }
+        }
 
         val ams = print.optJSONObject("ams")
         if (ams != null) {
@@ -291,6 +307,7 @@ class BambuMqttClient(
             coolingFanSpeed = coolingFan,
             bigFan1Speed = bigFan1,
             amsUnits = amsUnits,
+            vtTray = vtTray,
         )
         _printerStatus.value = newStatus
 

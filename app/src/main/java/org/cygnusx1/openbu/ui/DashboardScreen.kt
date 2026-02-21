@@ -47,6 +47,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import org.cygnusx1.openbu.R
+import org.cygnusx1.openbu.network.AmsTray
 import org.cygnusx1.openbu.network.AmsUnit
 import org.cygnusx1.openbu.network.PrinterStatus
 
@@ -239,6 +240,10 @@ fun DashboardScreen(
             Spacer(modifier = Modifier.height(8.dp))
         }
 
+        // External spool
+        ExternalSpoolCard(printerStatus.vtTray)
+        Spacer(modifier = Modifier.height(8.dp))
+
         Spacer(modifier = Modifier.height(32.dp))
     }
 }
@@ -424,23 +429,84 @@ private fun AmsCard(amsUnit: AmsUnit) {
                     horizontalArrangement = Arrangement.SpaceEvenly,
                 ) {
                     for (tray in amsUnit.trays) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
+                        FilamentSlot(tray)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FilamentSlot(tray: AmsTray) {
+    val isEmpty = tray.trayType.isEmpty()
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        if (isEmpty) {
+            Box(
+                modifier = Modifier.size(32.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "Empty",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        } else {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(parseHexColor(tray.trayColor)),
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = tray.trayType,
+                style = MaterialTheme.typography.bodySmall,
+                textAlign = TextAlign.Center,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ExternalSpoolCard(vtTray: AmsTray?) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+        ) {
+            Text(
+                text = "External Spool",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+            ) {
+                if (vtTray != null) {
+                    FilamentSlot(vtTray)
+                } else {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Box(
+                            modifier = Modifier.size(32.dp),
+                            contentAlignment = Alignment.Center,
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(32.dp)
-                                    .clip(CircleShape)
-                                    .background(parseHexColor(tray.trayColor)),
+                            Text(
+                                text = "Empty",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
-                            if (tray.trayType.isNotEmpty()) {
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = tray.trayType,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    textAlign = TextAlign.Center,
-                                )
-                            }
                         }
                     }
                 }
