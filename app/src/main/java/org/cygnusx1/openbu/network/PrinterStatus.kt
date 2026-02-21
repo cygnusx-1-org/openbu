@@ -30,3 +30,10 @@ data class PrinterStatus(
     val bigFan1Speed: String = "0",
     val amsUnits: List<AmsUnit> = emptyList(),
 )
+
+data class SavedPrinter(
+    val ip: String,
+    val serialNumber: String,
+    val accessCode: String,
+    val deviceName: String = "",
+)

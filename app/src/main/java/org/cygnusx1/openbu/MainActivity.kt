@@ -22,6 +22,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.rtsp.RtspMediaSource
 import org.cygnusx1.openbu.ui.ConnectionScreen
 import org.cygnusx1.openbu.ui.DashboardScreen
+import org.cygnusx1.openbu.ui.PrinterSettingsScreen
 import org.cygnusx1.openbu.ui.RtspStreamScreen
 import org.cygnusx1.openbu.ui.SettingsScreen
 import org.cygnusx1.openbu.ui.StreamScreen
@@ -52,10 +53,13 @@ class MainActivity : ComponentActivity() {
                 val debugLogging by viewModel.debugLogging.collectAsState()
                 val extendedDebugLogging by viewModel.extendedDebugLogging.collectAsState()
                 val discoveredPrinters by viewModel.discoveredPrinters.collectAsState()
+                val savedPrinters by viewModel.savedPrinters.collectAsState()
+                val connectedSerialNumber by viewModel.connectedSerialNumber.collectAsState()
 
                 var showFullscreen by rememberSaveable { mutableStateOf(false) }
                 var showRtspFullscreen by rememberSaveable { mutableStateOf(false) }
                 var showSettings by rememberSaveable { mutableStateOf(false) }
+                var showPrinterSettings by rememberSaveable { mutableStateOf(false) }
                 val effectiveRtspUrl = if (rtspEnabled && rtspUrl.isNotBlank()) rtspUrl else ""
 
                 // Shared ExoPlayer for RTSP — survives screen transitions
@@ -84,10 +88,6 @@ class MainActivity : ComponentActivity() {
                             onKeepConnectionChanged = { viewModel.setKeepConnectionInBackground(it) },
                             showMainStream = showMainStream,
                             onShowMainStreamChanged = { viewModel.setShowMainStream(it) },
-                            rtspEnabled = rtspEnabled,
-                            onRtspEnabledChanged = { viewModel.setRtspEnabled(it) },
-                            rtspUrl = rtspUrl,
-                            onRtspUrlChanged = { viewModel.setRtspUrl(it) },
                             forceDarkMode = forceDarkMode,
                             onForceDarkModeChanged = { viewModel.setForceDarkMode(it) },
                             debugLogging = debugLogging,
@@ -95,6 +95,20 @@ class MainActivity : ComponentActivity() {
                             extendedDebugLogging = extendedDebugLogging,
                             onExtendedDebugLoggingChanged = { viewModel.setExtendedDebugLogging(it) },
                             onBack = { showSettings = false },
+                        )
+                    }
+                    connectionState == ConnectionState.Connected && showPrinterSettings -> {
+                        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                        BackHandler { showPrinterSettings = false }
+                        PrinterSettingsScreen(
+                            rtspEnabled = rtspEnabled,
+                            onRtspEnabledChanged = { viewModel.setRtspEnabled(it) },
+                            rtspUrl = rtspUrl,
+                            onRtspUrlChanged = { viewModel.setRtspUrl(it) },
+                            isSaved = savedPrinters.any { it.serialNumber == connectedSerialNumber },
+                            onSavePrinter = { viewModel.saveCurrentPrinter() },
+                            onDeletePrinter = { viewModel.deleteSavedPrinter(connectedSerialNumber) },
+                            onBack = { showPrinterSettings = false },
                         )
                     }
                     connectionState == ConnectionState.Connected && showFullscreen -> {
@@ -125,6 +139,7 @@ class MainActivity : ComponentActivity() {
                             showFullscreen = false
                             showRtspFullscreen = false
                             showSettings = false
+                            showPrinterSettings = false
                             viewModel.disconnect()
                             window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                         }
@@ -140,6 +155,7 @@ class MainActivity : ComponentActivity() {
                             onOpenFullscreen = { showFullscreen = true },
                             onOpenRtspFullscreen = { showRtspFullscreen = true },
                             onOpenSettings = { showSettings = true },
+                            onOpenPrinterSettings = { showPrinterSettings = true },
                         )
                     }
                     else -> {
@@ -148,10 +164,12 @@ class MainActivity : ComponentActivity() {
                         showFullscreen = false
                         showRtspFullscreen = false
                         showSettings = false
+                        showPrinterSettings = false
                         ConnectionScreen(
                             connectionState = connectionState,
                             errorMessage = errorMessage,
                             discoveredPrinters = discoveredPrinters,
+                            savedPrinters = savedPrinters,
                             onStartDiscovery = { viewModel.startDiscovery() },
                             onStopDiscovery = { viewModel.stopDiscovery() },
                             onGetSavedAccessCode = { serial -> viewModel.getSavedAccessCode(serial) },

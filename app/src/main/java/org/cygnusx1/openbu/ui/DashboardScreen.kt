@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -62,6 +63,7 @@ fun DashboardScreen(
     onOpenFullscreen: () -> Unit,
     onOpenRtspFullscreen: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenPrinterSettings: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -74,6 +76,16 @@ fun DashboardScreen(
         Spacer(modifier = Modifier.height(48.dp))
 
         Box(modifier = Modifier.fillMaxWidth()) {
+            IconButton(
+                onClick = onOpenPrinterSettings,
+                modifier = Modifier.align(Alignment.CenterStart),
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Print,
+                    contentDescription = "Printer Settings",
+                    tint = MaterialTheme.colorScheme.onBackground,
+                )
+            }
             Text(
                 text = "Openbu",
                 style = MaterialTheme.typography.headlineMedium,

@@ -22,6 +22,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Print
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
@@ -51,7 +52,9 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.filled.Bookmark
 import org.cygnusx1.openbu.network.DiscoveredPrinter
+import org.cygnusx1.openbu.network.SavedPrinter
 import org.cygnusx1.openbu.viewmodel.ConnectionState
 
 @Composable
@@ -59,6 +62,7 @@ fun ConnectionScreen(
     connectionState: ConnectionState,
     errorMessage: String?,
     discoveredPrinters: List<DiscoveredPrinter>,
+    savedPrinters: List<SavedPrinter>,
     onStartDiscovery: () -> Unit,
     onStopDiscovery: () -> Unit,
     onGetSavedAccessCode: (serialNumber: String) -> String,
@@ -78,8 +82,12 @@ fun ConnectionScreen(
     val hasValidSerialPrefix = listOf("00M", "03W", "01P", "01S").any { serialNumber.startsWith(it) }
     val serialValid = isSerialLengthValid && hasValidSerialPrefix
 
+    val savedSerials = savedPrinters.map { it.serialNumber }.toSet()
+    val filteredDiscovered = discoveredPrinters.filter { it.serialNumber !in savedSerials }
+
     val selectedPrinter = discoveredPrinters.firstOrNull { it.serialNumber == selectedSerial }
-    val canConnectAuto = selectedPrinter != null && accessCode.isNotBlank()
+    val selectedSavedPrinter = savedPrinters.firstOrNull { it.serialNumber == selectedSerial }
+    val canConnectAuto = (selectedPrinter != null || selectedSavedPrinter != null) && accessCode.isNotBlank()
     val canConnectManual = ip.isNotBlank() && accessCode.isNotBlank() && serialValid
     val canConnect = if (manualMode) canConnectManual else canConnectAuto
 
@@ -206,7 +214,7 @@ fun ConnectionScreen(
             )
         } else {
             // Auto-discovery mode
-            if (discoveredPrinters.isEmpty()) {
+            if (savedPrinters.isEmpty() && discoveredPrinters.isEmpty()) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -235,73 +243,64 @@ fun ConnectionScreen(
                         .weight(1f, fill = false),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    items(
-                        discoveredPrinters.sortedByDescending { it.lastSeen },
-                        key = { it.serialNumber },
-                    ) { printer ->
-                        val isSelected = selectedSerial == printer.serialNumber
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable(enabled = !isConnecting) {
-                                    selectedSerial = printer.serialNumber
-                                    accessCode = onGetSavedAccessCode(printer.serialNumber)
-                                    accessCodeVisible = false
-                                }
-                                .then(
-                                    if (isSelected) Modifier.border(
-                                        2.dp,
-                                        MaterialTheme.colorScheme.primary,
-                                        CardDefaults.shape,
-                                    ) else Modifier
-                                ),
-                            colors = CardDefaults.cardColors(
-                                containerColor = if (isSelected)
-                                    MaterialTheme.colorScheme.primaryContainer
-                                else
-                                    MaterialTheme.colorScheme.surfaceVariant,
-                            ),
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.Print,
-                                    contentDescription = null,
-                                    tint = if (isSelected)
-                                        MaterialTheme.colorScheme.primary
-                                    else
-                                        MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Column {
-                                    Text(
-                                        text = printer.deviceName.ifBlank { printer.modelCode.ifBlank { "Bambu Lab Printer" } },
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        color = if (isSelected)
-                                            MaterialTheme.colorScheme.onPrimaryContainer
-                                        else
-                                            MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                    Text(
-                                        text = "${printer.ip} · ${printer.serialNumber}",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = if (isSelected)
-                                            MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                                        else
-                                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                                    )
-                                }
-                            }
+                    if (savedPrinters.isNotEmpty()) {
+                        item(key = "header_saved") {
+                            Text(
+                                text = "Saved Printers",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(vertical = 4.dp),
+                            )
                         }
+                        items(savedPrinters, key = { "saved_${it.serialNumber}" }) { printer ->
+                            PrinterCard(
+                                name = printer.deviceName.ifBlank { "Bambu Lab Printer" },
+                                detail = "${printer.ip} · ${printer.serialNumber}",
+                                icon = Icons.Filled.Bookmark,
+                                isSelected = selectedSerial == printer.serialNumber,
+                                enabled = !isConnecting,
+                                onClick = {
+                                    selectedSerial = printer.serialNumber
+                                    ip = printer.ip
+                                    accessCode = printer.accessCode
+                                    accessCodeVisible = false
+                                },
+                            )
+                        }
+                    }
+
+                    if (filteredDiscovered.isNotEmpty()) {
+                        item(key = "header_discovered") {
+                            Text(
+                                text = "Discovered Printers",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = if (savedPrinters.isNotEmpty()) 8.dp else 0.dp, bottom = 4.dp),
+                            )
+                        }
+                    }
+
+                    items(
+                        filteredDiscovered.sortedByDescending { it.lastSeen },
+                        key = { "disc_${it.serialNumber}" },
+                    ) { printer ->
+                        PrinterCard(
+                            name = printer.deviceName.ifBlank { printer.modelCode.ifBlank { "Bambu Lab Printer" } },
+                            detail = "${printer.ip} · ${printer.serialNumber}",
+                            icon = Icons.Filled.Print,
+                            isSelected = selectedSerial == printer.serialNumber,
+                            enabled = !isConnecting,
+                            onClick = {
+                                selectedSerial = printer.serialNumber
+                                accessCode = onGetSavedAccessCode(printer.serialNumber)
+                                accessCodeVisible = false
+                            },
+                        )
                     }
                 }
             }
 
-            if (selectedPrinter != null) {
+            if (selectedPrinter != null || selectedSavedPrinter != null) {
                 Spacer(modifier = Modifier.height(16.dp))
 
                 OutlinedTextField(
@@ -326,7 +325,11 @@ fun ConnectionScreen(
                     keyboardActions = KeyboardActions(
                         onDone = {
                             if (canConnect) {
-                                onConnect(selectedPrinter.ip, accessCode, selectedPrinter.serialNumber)
+                                if (selectedSavedPrinter != null) {
+                                    onConnect(selectedSavedPrinter.ip, accessCode, selectedSavedPrinter.serialNumber)
+                                } else if (selectedPrinter != null) {
+                                    onConnect(selectedPrinter.ip, accessCode, selectedPrinter.serialNumber)
+                                }
                             }
                         },
                     ),
@@ -345,6 +348,8 @@ fun ConnectionScreen(
                 onClick = {
                     if (manualMode) {
                         onConnect(ip, accessCode, serialNumber)
+                    } else if (selectedSavedPrinter != null) {
+                        onConnect(selectedSavedPrinter.ip, accessCode, selectedSavedPrinter.serialNumber)
                     } else if (selectedPrinter != null) {
                         onConnect(selectedPrinter.ip, accessCode, selectedPrinter.serialNumber)
                     }
@@ -363,6 +368,70 @@ fun ConnectionScreen(
                 color = Color.Red,
                 style = TextStyle(fontSize = 14.sp),
             )
+        }
+    }
+}
+
+@Composable
+private fun PrinterCard(
+    name: String,
+    detail: String,
+    icon: ImageVector,
+    isSelected: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled, onClick = onClick)
+            .then(
+                if (isSelected) Modifier.border(
+                    2.dp,
+                    MaterialTheme.colorScheme.primary,
+                    CardDefaults.shape,
+                ) else Modifier
+            ),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected)
+                MaterialTheme.colorScheme.primaryContainer
+            else
+                MaterialTheme.colorScheme.surfaceVariant,
+        ),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = if (isSelected)
+                    MaterialTheme.colorScheme.primary
+                else
+                    MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+                Text(
+                    text = name,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = if (isSelected)
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = detail,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (isSelected)
+                        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                )
+            }
         }
     }
 }

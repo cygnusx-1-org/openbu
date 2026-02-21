@@ -12,6 +12,7 @@ import org.cygnusx1.openbu.network.BambuMqttClient
 import org.cygnusx1.openbu.network.BambuSsdpClient
 import org.cygnusx1.openbu.network.DiscoveredPrinter
 import org.cygnusx1.openbu.network.PrinterStatus
+import org.cygnusx1.openbu.network.SavedPrinter
 import org.cygnusx1.openbu.service.ConnectionForegroundService
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -72,6 +73,15 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
     private val _extendedDebugLogging = MutableStateFlow(false)
     val extendedDebugLogging: StateFlow<Boolean> = _extendedDebugLogging.asStateFlow()
 
+    private val _connectedSerialNumber = MutableStateFlow("")
+    val connectedSerialNumber: StateFlow<String> = _connectedSerialNumber.asStateFlow()
+
+    private val _connectedIp = MutableStateFlow("")
+    private val _connectedAccessCode = MutableStateFlow("")
+
+    private val _savedPrinters = MutableStateFlow<List<SavedPrinter>>(emptyList())
+    val savedPrinters: StateFlow<List<SavedPrinter>> = _savedPrinters.asStateFlow()
+
     private val ssdpClient = BambuSsdpClient()
     val discoveredPrinters: StateFlow<List<DiscoveredPrinter>> = ssdpClient.discoveredPrinters
 
@@ -100,11 +110,16 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
     init {
         _keepConnectionInBackground.value = prefs.getBoolean("keep_connection_bg", true)
         _showMainStream.value = prefs.getBoolean("show_main_stream", true)
-        _rtspEnabled.value = prefs.getBoolean("rtsp_enabled", false)
-        _rtspUrl.value = prefs.getString("rtsp_url", "") ?: ""
         _forceDarkMode.value = prefs.getBoolean("force_dark_mode", false)
         _debugLogging.value = prefs.getBoolean("debug_logging", false)
         _extendedDebugLogging.value = prefs.getBoolean("extended_debug_logging", false)
+
+        // Migrate stale global RTSP keys
+        if (prefs.contains("rtsp_enabled") || prefs.contains("rtsp_url")) {
+            prefs.edit().remove("rtsp_enabled").remove("rtsp_url").apply()
+        }
+
+        loadSavedPrinters()
     }
 
     fun setKeepConnectionInBackground(enabled: Boolean) {
@@ -125,12 +140,23 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
 
     fun setRtspEnabled(enabled: Boolean) {
         _rtspEnabled.value = enabled
-        prefs.edit().putBoolean("rtsp_enabled", enabled).apply()
+        val serial = _connectedSerialNumber.value
+        if (serial.isNotEmpty()) {
+            prefs.edit().putBoolean("rtsp_enabled_$serial", enabled).apply()
+        }
     }
 
     fun setRtspUrl(url: String) {
         _rtspUrl.value = url
-        prefs.edit().putString("rtsp_url", url).apply()
+        val serial = _connectedSerialNumber.value
+        if (serial.isNotEmpty()) {
+            prefs.edit().putString("rtsp_url_$serial", url).apply()
+        }
+    }
+
+    private fun loadPerPrinterSettings(serial: String) {
+        _rtspEnabled.value = prefs.getBoolean("rtsp_enabled_$serial", false)
+        _rtspUrl.value = prefs.getString("rtsp_url_$serial", "") ?: ""
     }
 
     fun setForceDarkMode(enabled: Boolean) {
@@ -166,6 +192,10 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
 
         userDisconnected = false
         saveCredentials(ip, accessCode, serialNumber)
+        _connectedIp.value = ip
+        _connectedAccessCode.value = accessCode
+        _connectedSerialNumber.value = serialNumber
+        loadPerPrinterSettings(serialNumber)
         _connectionState.value = ConnectionState.Connecting
         _errorMessage.value = null
 
@@ -251,6 +281,11 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         _fps.value = 0f
         _isLightOn.value = null
         _isMqttConnected.value = false
+        _connectedSerialNumber.value = ""
+        _connectedIp.value = ""
+        _connectedAccessCode.value = ""
+        _rtspEnabled.value = false
+        _rtspUrl.value = ""
     }
 
     private fun stopForegroundService() {
@@ -272,6 +307,62 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
 
     fun stopDiscovery() {
         ssdpClient.stopDiscovery()
+    }
+
+    private fun loadSavedPrinters() {
+        val serialsCsv = prefs.getString("saved_printer_serials", "") ?: ""
+        if (serialsCsv.isBlank()) {
+            _savedPrinters.value = emptyList()
+            return
+        }
+        val serials = serialsCsv.split(",").filter { it.isNotBlank() }
+        _savedPrinters.value = serials.mapNotNull { serial ->
+            val ip = prefs.getString("saved_ip_$serial", "") ?: ""
+            val accessCode = prefs.getString("access_code_$serial", "") ?: ""
+            if (ip.isBlank()) return@mapNotNull null
+            SavedPrinter(
+                ip = ip,
+                serialNumber = serial,
+                accessCode = accessCode,
+                deviceName = prefs.getString("saved_name_$serial", "") ?: "",
+            )
+        }
+    }
+
+    fun saveCurrentPrinter() {
+        val serial = _connectedSerialNumber.value
+        val ip = _connectedIp.value
+        if (serial.isBlank() || ip.isBlank()) return
+
+        val deviceName = discoveredPrinters.value
+            .firstOrNull { it.serialNumber == serial }?.deviceName ?: ""
+
+        val serialsCsv = prefs.getString("saved_printer_serials", "") ?: ""
+        val serials = serialsCsv.split(",").filter { it.isNotBlank() }.toMutableSet()
+        serials.add(serial)
+
+        prefs.edit()
+            .putString("saved_printer_serials", serials.joinToString(","))
+            .putString("saved_ip_$serial", ip)
+            .putString("saved_name_$serial", deviceName)
+            .apply()
+
+        loadSavedPrinters()
+    }
+
+    fun deleteSavedPrinter(serial: String) {
+        val serialsCsv = prefs.getString("saved_printer_serials", "") ?: ""
+        val serials = serialsCsv.split(",").filter { it.isNotBlank() && it != serial }
+
+        prefs.edit()
+            .putString("saved_printer_serials", serials.joinToString(","))
+            .remove("saved_ip_$serial")
+            .remove("saved_name_$serial")
+            .remove("rtsp_enabled_$serial")
+            .remove("rtsp_url_$serial")
+            .apply()
+
+        loadSavedPrinters()
     }
 
     override fun onCleared() {
