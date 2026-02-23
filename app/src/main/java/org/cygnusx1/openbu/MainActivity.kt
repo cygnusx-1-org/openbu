@@ -20,13 +20,16 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.rtsp.RtspMediaSource
+import kotlinx.coroutines.launch
 import org.cygnusx1.openbu.ui.ConnectionScreen
 import org.cygnusx1.openbu.ui.DashboardScreen
 import org.cygnusx1.openbu.ui.FileManagerScreen
+import org.cygnusx1.openbu.ui.TimelapseScreen
 import org.cygnusx1.openbu.ui.PrinterSettingsScreen
 import org.cygnusx1.openbu.ui.RtspStreamScreen
 import org.cygnusx1.openbu.ui.SettingsScreen
 import org.cygnusx1.openbu.ui.StreamScreen
+import org.cygnusx1.openbu.ui.VideoPlayerScreen
 import org.cygnusx1.openbu.ui.theme.OpenbuTheme
 import org.cygnusx1.openbu.viewmodel.BambuStreamViewModel
 import org.cygnusx1.openbu.viewmodel.ConnectionState
@@ -62,6 +65,7 @@ class MainActivity : ComponentActivity() {
                 var showSettings by rememberSaveable { mutableStateOf(false) }
                 var showPrinterSettings by rememberSaveable { mutableStateOf(false) }
                 var showFileManager by rememberSaveable { mutableStateOf(false) }
+                var showTimelapse by rememberSaveable { mutableStateOf(false) }
                 val effectiveRtspUrl = if (rtspEnabled && rtspUrl.isNotBlank()) rtspUrl else ""
 
                 // Shared ExoPlayer for RTSP — survives screen transitions
@@ -88,7 +92,62 @@ class MainActivity : ComponentActivity() {
                 val ftpTransferProgress by viewModel.ftpTransferProgress.collectAsState()
                 val ftpTransferName by viewModel.ftpTransferName.collectAsState()
 
+                val timelapseListState = androidx.compose.foundation.lazy.rememberLazyListState()
+                val timelapseScope = androidx.compose.runtime.rememberCoroutineScope()
+                var timelapseNewestFirst by rememberSaveable { mutableStateOf(true) }
+                val timelapseFileList by viewModel.timelapseFileList.collectAsState()
+                val timelapseThumbnails by viewModel.timelapseThumbnails.collectAsState()
+                val timelapseLoading by viewModel.timelapseLoading.collectAsState()
+                val timelapseError by viewModel.timelapseError.collectAsState()
+                val timelapseDownloadProgress by viewModel.timelapseDownloadProgress.collectAsState()
+                val timelapseDownloadName by viewModel.timelapseDownloadName.collectAsState()
+                val timelapsePlaybackFile by viewModel.timelapsePlaybackFile.collectAsState()
+
                 when {
+                    // Video player — shown when timelapse file is downloaded
+                    showTimelapse && timelapsePlaybackFile != null -> {
+                        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR
+                        BackHandler {
+                            viewModel.clearPlaybackFile()
+                            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                        }
+                        VideoPlayerScreen(
+                            videoFile = timelapsePlaybackFile!!,
+                            onFinished = {
+                                viewModel.clearPlaybackFile()
+                            },
+                        )
+                    }
+                    // Timelapse recordings browser
+                    showTimelapse -> {
+                        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                        BackHandler {
+                            viewModel.closeTimelapse()
+                            showTimelapse = false
+                        }
+                        TimelapseScreen(
+                            fileList = timelapseFileList,
+                            thumbnails = timelapseThumbnails,
+                            isLoading = timelapseLoading,
+                            error = timelapseError,
+                            downloadProgress = timelapseDownloadProgress,
+                            downloadName = timelapseDownloadName,
+                            listState = timelapseListState,
+                            newestFirst = timelapseNewestFirst,
+                            onToggleSortOrder = {
+                                timelapseNewestFirst = !timelapseNewestFirst
+                                timelapseScope.launch { timelapseListState.scrollToItem(0) }
+                            },
+                            onPlayVideo = { viewModel.playVideo(it) },
+                            onCancelDownload = { viewModel.cancelTimelapseDownload() },
+                            onClearError = { viewModel.clearTimelapseError() },
+                            onBack = {
+                                viewModel.closeTimelapse()
+                                showTimelapse = false
+                            },
+                        )
+                    }
                     // File manager stays visible even if camera/MQTT drops
                     showFileManager -> {
                         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
@@ -184,7 +243,9 @@ class MainActivity : ComponentActivity() {
                             showSettings = false
                             showPrinterSettings = false
                             showFileManager = false
+                            showTimelapse = false
                             viewModel.closeFileManager()
+                            viewModel.closeTimelapse()
                             viewModel.disconnect()
                             window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                         }
@@ -205,6 +266,10 @@ class MainActivity : ComponentActivity() {
                                 viewModel.openFileManager()
                                 showFileManager = true
                             },
+                            onOpenTimelapse = {
+                                viewModel.openTimelapse()
+                                showTimelapse = true
+                            },
                         )
                     }
                     else -> {
@@ -215,6 +280,7 @@ class MainActivity : ComponentActivity() {
                         showSettings = false
                         showPrinterSettings = false
                         showFileManager = false
+                        showTimelapse = false
                         ConnectionScreen(
                             connectionState = connectionState,
                             errorMessage = errorMessage,

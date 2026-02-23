@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import android.util.Log
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -110,12 +111,39 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
     private val _ftpTransferName = MutableStateFlow<String?>(null)
     val ftpTransferName: StateFlow<String?> = _ftpTransferName.asStateFlow()
 
+    // Timelapse state flows
+    private val _timelapseFileList = MutableStateFlow<List<FtpFileEntry>>(emptyList())
+    val timelapseFileList: StateFlow<List<FtpFileEntry>> = _timelapseFileList.asStateFlow()
+
+    private val _timelapseThumbnails = MutableStateFlow<Map<String, Bitmap>>(emptyMap())
+    val timelapseThumbnails: StateFlow<Map<String, Bitmap>> = _timelapseThumbnails.asStateFlow()
+
+    private val _timelapseLoading = MutableStateFlow(false)
+    val timelapseLoading: StateFlow<Boolean> = _timelapseLoading.asStateFlow()
+
+    private val _timelapseError = MutableStateFlow<String?>(null)
+    val timelapseError: StateFlow<String?> = _timelapseError.asStateFlow()
+
+    private val _timelapseDownloadProgress = MutableStateFlow<Float?>(null)
+    val timelapseDownloadProgress: StateFlow<Float?> = _timelapseDownloadProgress.asStateFlow()
+
+    private val _timelapseDownloadName = MutableStateFlow<String?>(null)
+    val timelapseDownloadName: StateFlow<String?> = _timelapseDownloadName.asStateFlow()
+
+    private val _timelapsePlaybackFile = MutableStateFlow<File?>(null)
+    val timelapsePlaybackFile: StateFlow<File?> = _timelapsePlaybackFile.asStateFlow()
+
     private var client: BambuCameraClient? = null
     private var streamJob: Job? = null
     private var mqttClient: BambuMqttClient? = null
     private var mqttJob: Job? = null
     private var ftpClient: BambuFtpsClient? = null
     private var ftpTransferJob: Job? = null
+    private var timelapseFtpClient: BambuFtpsClient? = null
+    private var timelapseDownloadJob: Job? = null
+    private var timelapseDownloadClient: BambuFtpsClient? = null
+    private var timelapseThumbnailJob: Job? = null
+    @Volatile private var timelapseDownloadCancelled = false
     private var userDisconnected = false
 
     private val prefs by lazy {
@@ -628,10 +656,224 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    // --- Timelapse functions ---
+
+    fun openTimelapse() {
+        val ip = _connectedIp.value
+        val code = _connectedAccessCode.value
+        if (ip.isBlank() || code.isBlank()) return
+
+        _timelapseLoading.value = true
+        _timelapseError.value = null
+        _timelapseFileList.value = emptyList()
+        _timelapseThumbnails.value = emptyMap()
+
+        viewModelScope.launch {
+            try {
+                val client = BambuFtpsClient(ip, code)
+                client.connect()
+                timelapseFtpClient = client
+                val files = client.listDirectory("/timelapse")
+                    .filter { !it.isDirectory && it.name.lowercase().endsWith(".avi") }
+                    .sortedByDescending { it.lastModified }
+                _timelapseFileList.value = files
+                loadThumbnails(files)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _timelapseError.value = "Failed to list recordings: ${e.message}"
+            } finally {
+                _timelapseLoading.value = false
+            }
+        }
+    }
+
+    private fun loadThumbnails(files: List<FtpFileEntry>) {
+        val app = getApplication<Application>()
+
+        // Load cached thumbnails first, collect which ones need downloading
+        val uncached = mutableListOf<FtpFileEntry>()
+        for (entry in files) {
+            val baseName = entry.name.substringBeforeLast(".")
+            val cachedFile = File(app.cacheDir, "thumb_${baseName}.jpg")
+            if (cachedFile.exists() && cachedFile.length() > 0) {
+                val bitmap = android.graphics.BitmapFactory.decodeFile(cachedFile.absolutePath)
+                if (bitmap != null) {
+                    _timelapseThumbnails.value = _timelapseThumbnails.value + (entry.name to bitmap)
+                    continue
+                }
+            }
+            uncached.add(entry)
+        }
+
+        if (uncached.isEmpty()) return
+
+        timelapseThumbnailJob = viewModelScope.launch(Dispatchers.IO) {
+            val thumbClient = try {
+                BambuFtpsClient(_connectedIp.value, _connectedAccessCode.value).also { it.connect() }
+            } catch (_: Exception) {
+                return@launch
+            }
+            try {
+                // List available thumbnails on the printer
+                val remoteThumbs = try {
+                    thumbClient.listDirectory("/timelapse/thumbnail")
+                        .filter { !it.isDirectory && it.name.lowercase().endsWith(".jpg") }
+                        .map { it.name }
+                        .toSet()
+                } catch (_: Exception) {
+                    emptySet()
+                }
+
+                for (entry in uncached) {
+                    val baseName = entry.name.substringBeforeLast(".")
+                    val thumbName = "${baseName}.jpg"
+                    if (thumbName !in remoteThumbs) continue
+                    downloadThumbnail(entry, baseName, app, thumbClient)
+                }
+            } finally {
+                thumbClient.close()
+            }
+        }
+    }
+
+    private suspend fun downloadThumbnail(entry: FtpFileEntry, baseName: String, app: Application, thumbClient: BambuFtpsClient) {
+        val cachedFile = File(app.cacheDir, "thumb_${baseName}.jpg")
+        try {
+            val remotePath = "/timelapse/thumbnail/${baseName}.jpg"
+            FileOutputStream(cachedFile).use { output ->
+                thumbClient.downloadFile(remotePath, output, totalSize = -1) { _, _ -> }
+            }
+            if (cachedFile.exists() && cachedFile.length() > 0) {
+                val bitmap = android.graphics.BitmapFactory.decodeFile(cachedFile.absolutePath)
+                if (bitmap != null) {
+                    _timelapseThumbnails.value = _timelapseThumbnails.value + (entry.name to bitmap)
+                }
+            }
+        } catch (_: Exception) {
+            // Thumbnail download failed, skip
+        }
+    }
+
+    fun playVideo(entry: FtpFileEntry) {
+        // Cancel thumbnail loading first — we need the printer's FTPS capacity
+        timelapseThumbnailJob?.cancel()
+        timelapseThumbnailJob = null
+
+        val app = getApplication<Application>()
+        timelapseDownloadCancelled = false
+        _timelapseDownloadName.value = entry.name
+        _timelapseDownloadProgress.value = 0f
+
+        val cachedFile = File(app.cacheDir, "timelapse_${entry.name}")
+
+        // Use cached file if it matches the expected size
+        if (cachedFile.exists() && cachedFile.length() == entry.size) {
+            Log.d("PlayVideo", "Using cached file: ${cachedFile.name} (${cachedFile.length()} bytes)")
+            _timelapseDownloadProgress.value = null
+            _timelapseDownloadName.value = null
+            _timelapsePlaybackFile.value = cachedFile
+            return
+        }
+
+        timelapseDownloadJob = viewModelScope.launch {
+            try {
+                val dlClient = BambuFtpsClient(_connectedIp.value, _connectedAccessCode.value)
+                timelapseDownloadClient = dlClient
+                dlClient.connect()
+
+                Log.d("PlayVideo", "Downloading ${entry.name} (${entry.size} bytes)")
+                FileOutputStream(cachedFile).use { output ->
+                    dlClient.downloadFile(
+                        "/timelapse/${entry.name}",
+                        output,
+                        totalSize = entry.size,
+                    ) { bytesRead, totalBytes ->
+                        if (timelapseDownloadCancelled) return@downloadFile
+                        if (totalBytes > 0) {
+                            _timelapseDownloadProgress.value = (bytesRead.toFloat() / totalBytes).coerceIn(0f, 1f)
+                        }
+                    }
+                }
+                if (!timelapseDownloadCancelled) {
+                    Log.d("PlayVideo", "Download complete (${cachedFile.length()} bytes)")
+                    _timelapseDownloadProgress.value = null
+                    _timelapseDownloadName.value = null
+                    _timelapsePlaybackFile.value = cachedFile
+                }
+            } catch (e: CancellationException) {
+                // Cancelled by user
+            } catch (e: Exception) {
+                if (!timelapseDownloadCancelled) {
+                    Log.e("PlayVideo", "Download failed", e)
+                    _timelapseError.value = "Download failed: ${e.message}"
+                    _timelapseDownloadProgress.value = null
+                    _timelapseDownloadName.value = null
+                }
+            } finally {
+                timelapseDownloadJob = null
+                timelapseDownloadClient?.close()
+                timelapseDownloadClient = null
+            }
+        }
+    }
+
+    fun cancelTimelapseDownload() {
+        // Set flag first to prevent progress callbacks from re-setting state
+        timelapseDownloadCancelled = true
+        _timelapseDownloadProgress.value = null
+        _timelapseDownloadName.value = null
+        // Close the data socket to unblock the blocking read, then cancel the job
+        timelapseDownloadClient?.cancelTransfer()
+        timelapseDownloadJob?.cancel()
+        timelapseDownloadJob = null
+    }
+
+    fun clearPlaybackFile() {
+        _timelapsePlaybackFile.value = null
+        cancelTimelapseDownload()
+    }
+
+    fun clearTimelapseError() {
+        _timelapseError.value = null
+    }
+
+    fun closeTimelapse() {
+        timelapseDownloadJob?.cancel()
+        timelapseDownloadJob = null
+        timelapseThumbnailJob?.cancel()
+        timelapseThumbnailJob = null
+        val ftp = timelapseFtpClient
+        timelapseFtpClient = null
+        _timelapseFileList.value = emptyList()
+        _timelapseThumbnails.value = emptyMap()
+        _timelapseLoading.value = false
+        _timelapseError.value = null
+        _timelapseDownloadProgress.value = null
+        _timelapseDownloadName.value = null
+        _timelapsePlaybackFile.value = null
+        viewModelScope.launch(Dispatchers.IO) {
+            ftp?.close()
+        }
+
+        // Reconnect camera + MQTT if dropped during FTPS operations
+        val ip = _connectedIp.value
+        val code = _connectedAccessCode.value
+        val serial = _connectedSerialNumber.value
+        if (ip.isNotBlank() && code.isNotBlank() && serial.isNotBlank() &&
+            _connectionState.value != ConnectionState.Connected
+        ) {
+            _connectionState.value = ConnectionState.Disconnected
+            _errorMessage.value = null
+            connect(ip, code, serial)
+        }
+    }
+
     override fun onCleared() {
         super.onCleared()
         ssdpClient.stopDiscovery()
         closeFileManager()
+        closeTimelapse()
         disconnect()
     }
 }

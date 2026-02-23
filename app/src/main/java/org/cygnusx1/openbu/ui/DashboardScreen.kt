@@ -25,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -67,6 +68,7 @@ fun DashboardScreen(
     onOpenSettings: () -> Unit,
     onOpenPrinterSettings: () -> Unit,
     onOpenFileManager: () -> Unit,
+    onOpenTimelapse: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -91,6 +93,13 @@ fun DashboardScreen(
                     Icon(
                         imageVector = Icons.Filled.Folder,
                         contentDescription = "File Manager",
+                        tint = MaterialTheme.colorScheme.onBackground,
+                    )
+                }
+                IconButton(onClick = onOpenTimelapse) {
+                    Icon(
+                        imageVector = Icons.Filled.Videocam,
+                        contentDescription = "Recordings",
                         tint = MaterialTheme.colorScheme.onBackground,
                     )
                 }
