@@ -60,6 +60,7 @@ fun DashboardScreen(
     isLightOn: Boolean?,
     isMqttConnected: Boolean,
     printerStatus: PrinterStatus,
+    printerName: String,
     showMainStream: Boolean,
     rtspPlayer: ExoPlayer?,
     onToggleLight: (Boolean) -> Unit,
@@ -107,12 +108,24 @@ fun DashboardScreen(
                     )
                 }
             }
-            Text(
-                text = "Openbu",
-                style = MaterialTheme.typography.headlineMedium,
-                color = MaterialTheme.colorScheme.onBackground,
+            Column(
                 modifier = Modifier.align(Alignment.Center),
-            )
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    text = "Openbu",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+                if (printerName.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = printerName,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
             IconButton(
                 onClick = onOpenSettings,
                 modifier = Modifier.align(Alignment.CenterEnd),

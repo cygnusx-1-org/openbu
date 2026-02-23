@@ -42,8 +42,13 @@ class MainActivity : ComponentActivity() {
         setContent {
             val viewModel: BambuStreamViewModel = viewModel()
             val forceDarkMode by viewModel.forceDarkMode.collectAsState()
-            OpenbuTheme(overrideDeviceTheme = forceDarkMode) {
-                val connectionState by viewModel.connectionState.collectAsState()
+            val customBgColor by viewModel.customBgColor.collectAsState()
+            val connectionState by viewModel.connectionState.collectAsState()
+            val isConnected = connectionState == ConnectionState.Connected
+            OpenbuTheme(
+                overrideDeviceTheme = forceDarkMode,
+                customBackgroundColor = if (isConnected) customBgColor else null,
+            ) {
                 val frame by viewModel.frame.collectAsState()
                 val fps by viewModel.fps.collectAsState()
                 val errorMessage by viewModel.errorMessage.collectAsState()
@@ -203,11 +208,16 @@ class MainActivity : ComponentActivity() {
                     connectionState == ConnectionState.Connected && showPrinterSettings -> {
                         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
                         BackHandler { showPrinterSettings = false }
+                        val customPrinterName by viewModel.customPrinterName.collectAsState()
                         PrinterSettingsScreen(
+                            customPrinterName = customPrinterName,
+                            onCustomPrinterNameChanged = { viewModel.setCustomPrinterName(it) },
                             rtspEnabled = rtspEnabled,
                             onRtspEnabledChanged = { viewModel.setRtspEnabled(it) },
                             rtspUrl = rtspUrl,
                             onRtspUrlChanged = { viewModel.setRtspUrl(it) },
+                            customBgColor = customBgColor,
+                            onBgColorChanged = { viewModel.setCustomBgColor(it) },
                             isSaved = savedPrinters.any { it.serialNumber == connectedSerialNumber },
                             onSavePrinter = { viewModel.saveCurrentPrinter() },
                             onDeletePrinter = { viewModel.deleteSavedPrinter(connectedSerialNumber) },
@@ -250,12 +260,19 @@ class MainActivity : ComponentActivity() {
                             viewModel.disconnect()
                             window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                         }
+                        val dashboardCustomName by viewModel.customPrinterName.collectAsState()
+                        val printerName = dashboardCustomName.ifBlank {
+                            discoveredPrinters.firstOrNull { it.serialNumber == connectedSerialNumber }?.deviceName
+                                ?: savedPrinters.firstOrNull { it.serialNumber == connectedSerialNumber }?.deviceName
+                                ?: ""
+                        }
                         DashboardScreen(
                             frame = frame,
                             fps = fps,
                             isLightOn = isLightOn,
                             isMqttConnected = isMqttConnected,
                             printerStatus = printerStatus,
+                            printerName = printerName,
                             showMainStream = showMainStream,
                             rtspPlayer = rtspPlayer,
                             onToggleLight = { viewModel.toggleLight(it) },

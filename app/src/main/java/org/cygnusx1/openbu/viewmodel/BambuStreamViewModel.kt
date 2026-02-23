@@ -81,6 +81,12 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
     private val _extendedDebugLogging = MutableStateFlow(false)
     val extendedDebugLogging: StateFlow<Boolean> = _extendedDebugLogging.asStateFlow()
 
+    private val _customPrinterName = MutableStateFlow("")
+    val customPrinterName: StateFlow<String> = _customPrinterName.asStateFlow()
+
+    private val _customBgColor = MutableStateFlow<Int?>(null)
+    val customBgColor: StateFlow<Int?> = _customBgColor.asStateFlow()
+
     private val _connectedSerialNumber = MutableStateFlow("")
     val connectedSerialNumber: StateFlow<String> = _connectedSerialNumber.asStateFlow()
 
@@ -209,9 +215,33 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    fun setCustomPrinterName(name: String) {
+        _customPrinterName.value = name
+        val serial = _connectedSerialNumber.value
+        if (serial.isNotEmpty()) {
+            prefs.edit().putString("custom_name_$serial", name).apply()
+            // Update the saved printer list so the connection screen reflects the name
+            loadSavedPrinters()
+        }
+    }
+
+    fun setCustomBgColor(color: Int?) {
+        _customBgColor.value = color
+        val serial = _connectedSerialNumber.value
+        if (serial.isNotEmpty()) {
+            if (color != null) {
+                prefs.edit().putInt("bg_color_$serial", color).apply()
+            } else {
+                prefs.edit().remove("bg_color_$serial").apply()
+            }
+        }
+    }
+
     private fun loadPerPrinterSettings(serial: String) {
         _rtspEnabled.value = prefs.getBoolean("rtsp_enabled_$serial", false)
         _rtspUrl.value = prefs.getString("rtsp_url_$serial", "") ?: ""
+        _customBgColor.value = if (prefs.contains("bg_color_$serial")) prefs.getInt("bg_color_$serial", 0) else null
+        _customPrinterName.value = prefs.getString("custom_name_$serial", "") ?: ""
     }
 
     fun setForceDarkMode(enabled: Boolean) {
@@ -364,6 +394,8 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         _connectedAccessCode.value = ""
         _rtspEnabled.value = false
         _rtspUrl.value = ""
+        _customBgColor.value = null
+        _customPrinterName.value = ""
     }
 
     private fun stopForegroundService() {
@@ -402,7 +434,9 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
                 ip = ip,
                 serialNumber = serial,
                 accessCode = accessCode,
-                deviceName = prefs.getString("saved_name_$serial", "") ?: "",
+                deviceName = (prefs.getString("custom_name_$serial", "") ?: "").ifBlank {
+                    prefs.getString("saved_name_$serial", "") ?: ""
+                },
             )
         }
     }
@@ -438,6 +472,8 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
             .remove("saved_name_$serial")
             .remove("rtsp_enabled_$serial")
             .remove("rtsp_url_$serial")
+            .remove("bg_color_$serial")
+            .remove("custom_name_$serial")
             .apply()
 
         loadSavedPrinters()

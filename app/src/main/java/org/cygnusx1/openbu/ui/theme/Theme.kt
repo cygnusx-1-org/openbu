@@ -8,6 +8,7 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme()
@@ -16,6 +17,7 @@ private val LightColorScheme = lightColorScheme()
 @Composable
 fun OpenbuTheme(
     overrideDeviceTheme: Boolean = false,
+    customBackgroundColor: Int? = null,
     darkTheme: Boolean = isSystemInDarkTheme() xor overrideDeviceTheme,
     content: @Composable () -> Unit,
 ) {
@@ -26,6 +28,13 @@ fun OpenbuTheme(
         }
         darkTheme -> DarkColorScheme
         else -> LightColorScheme
+    }.let { scheme ->
+        if (customBackgroundColor != null) {
+            val bg = Color(customBackgroundColor)
+            scheme.copy(background = bg, surface = bg)
+        } else {
+            scheme
+        }
     }
 
     MaterialTheme(
