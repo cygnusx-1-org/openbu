@@ -75,6 +75,7 @@ fun PrinterSettingsScreen(
     onRtspEnabledChanged: (Boolean) -> Unit,
     rtspUrl: String,
     onRtspUrlChanged: (String) -> Unit,
+    isAutoRtsp: Boolean = false,
     customBgColor: Int?,
     onBgColorChanged: (Int?) -> Unit,
     isSaved: Boolean,
@@ -175,44 +176,46 @@ fun PrinterSettingsScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            if (!isAutoRtsp) {
+                Spacer(modifier = Modifier.height(16.dp))
 
-            // RTSP stream toggle
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "External RTSP stream",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onBackground,
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = "Show an external RTSP camera on the dashboard",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                // RTSP stream toggle
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "External RTSP stream",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onBackground,
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "Show an external RTSP camera on the dashboard",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(
+                        checked = rtspEnabled,
+                        onCheckedChange = onRtspEnabledChanged,
                     )
                 }
-                Switch(
-                    checked = rtspEnabled,
-                    onCheckedChange = onRtspEnabledChanged,
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // RTSP URL field
+                OutlinedTextField(
+                    value = rtspUrl,
+                    onValueChange = onRtspUrlChanged,
+                    label = { Text("RTSP URL") },
+                    placeholder = { Text("rtsp://192.168.1.100:8554/stream") },
+                    singleLine = true,
+                    enabled = rtspEnabled,
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // RTSP URL field
-            OutlinedTextField(
-                value = rtspUrl,
-                onValueChange = onRtspUrlChanged,
-                label = { Text("RTSP URL") },
-                placeholder = { Text("rtsp://192.168.1.100:8554/stream") },
-                singleLine = true,
-                enabled = rtspEnabled,
-                modifier = Modifier.fillMaxWidth(),
-            )
 
             Spacer(modifier = Modifier.height(24.dp))
 

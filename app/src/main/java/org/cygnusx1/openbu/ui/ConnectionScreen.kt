@@ -79,7 +79,7 @@ fun ConnectionScreen(
     val textFieldColors = OutlinedTextFieldDefaults.colors()
 
     val isSerialLengthValid = serialNumber.length in 15..16
-    val hasValidSerialPrefix = listOf("00M", "03W", "01P", "01S").any { serialNumber.startsWith(it) }
+    val hasValidSerialPrefix = listOf("00M", "03W", "01P", "01S", "030", "039", "22E", "31B", "094", "239", "093").any { serialNumber.startsWith(it) }
     val serialValid = isSerialLengthValid && hasValidSerialPrefix
 
     val savedSerials = savedPrinters.map { it.serialNumber }.toSet()
@@ -192,7 +192,7 @@ fun ConnectionScreen(
                         if (!isSerialLengthValid) {
                             Text("Must be 15 or 16 characters (currently ${serialNumber.length})", color = Color.Red)
                         } else {
-                            Text("Serial number must start with 00M, 03W, 01P, or 01S.", color = Color.Red)
+                            Text("Unrecognized serial number prefix.", color = Color.Red)
                         }
                     }
                 },

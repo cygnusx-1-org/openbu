@@ -270,6 +270,9 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
             .apply()
     }
 
+    private fun usesMjpegCamera(serial: String): Boolean =
+        serial.startsWith("01S") || serial.startsWith("01P")
+
     fun connect(ip: String, accessCode: String, serialNumber: String) {
         if (_connectionState.value == ConnectionState.Connecting ||
             _connectionState.value == ConnectionState.Connected
@@ -300,51 +303,62 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         _connectionState.value = ConnectionState.Connecting
         _errorMessage.value = null
 
-        val bambuClient = BambuCameraClient(ip, accessCode)
-        bambuClient.extendedDebugLogging = _extendedDebugLogging.value
-        client = bambuClient
+        if (usesMjpegCamera(serialNumber)) {
+            // P1P / P1S — use MJPEG over SSL on port 6000
+            _showMainStream.value = prefs.getBoolean("show_main_stream", true)
+            val bambuClient = BambuCameraClient(ip, accessCode)
+            bambuClient.extendedDebugLogging = _extendedDebugLogging.value
+            client = bambuClient
 
-        streamJob = viewModelScope.launch {
-            try {
-                var frameCount = 0
-                var lastFpsTime = System.currentTimeMillis()
+            streamJob = viewModelScope.launch {
+                try {
+                    var frameCount = 0
+                    var lastFpsTime = System.currentTimeMillis()
 
-                bambuClient.frameFlow().collect { bitmap ->
-                    if (_connectionState.value != ConnectionState.Connected) {
-                        _connectionState.value = ConnectionState.Connected
-                        if (_keepConnectionInBackground.value) {
-                            val app = getApplication<Application>()
-                            app.startForegroundService(Intent(app, ConnectionForegroundService::class.java))
+                    bambuClient.frameFlow().collect { bitmap ->
+                        if (_connectionState.value != ConnectionState.Connected) {
+                            _connectionState.value = ConnectionState.Connected
+                            if (_keepConnectionInBackground.value) {
+                                val app = getApplication<Application>()
+                                app.startForegroundService(Intent(app, ConnectionForegroundService::class.java))
+                            }
+                        }
+                        _frame.value = bitmap
+
+                        frameCount++
+                        val now = System.currentTimeMillis()
+                        val elapsed = now - lastFpsTime
+                        if (elapsed >= 1000) {
+                            _fps.value = frameCount * 1000f / elapsed
+                            frameCount = 0
+                            lastFpsTime = now
                         }
                     }
-                    _frame.value = bitmap
-
-                    frameCount++
-                    val now = System.currentTimeMillis()
-                    val elapsed = now - lastFpsTime
-                    if (elapsed >= 1000) {
-                        _fps.value = frameCount * 1000f / elapsed
-                        frameCount = 0
-                        lastFpsTime = now
-                    }
-                }
-                _connectionState.value = ConnectionState.Disconnected
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                if (!userDisconnected) {
-                    if (ftpClient != null) {
-                        // FTP is active — don't tear everything down, just note the stream died
-                        _connectionState.value = ConnectionState.Error
-                        _frame.value = null
-                        _fps.value = 0f
-                    } else {
-                        _errorMessage.value = "Connection to printer failed"
-                        _connectionState.value = ConnectionState.Error
-                        cleanupConnections()
+                    _connectionState.value = ConnectionState.Disconnected
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    if (!userDisconnected) {
+                        if (ftpClient != null) {
+                            // FTP is active — don't tear everything down, just note the stream died
+                            _connectionState.value = ConnectionState.Error
+                            _frame.value = null
+                            _fps.value = 0f
+                        } else {
+                            _errorMessage.value = "Connection to printer failed"
+                            _connectionState.value = ConnectionState.Error
+                            cleanupConnections()
+                        }
                     }
                 }
             }
+        } else {
+            // All other printers — use RTSPS on port 322
+            val rtspUrl = "rtsps://bblp:$accessCode@$ip:322/streaming/live/1"
+            Log.d("RTSP", "Non-MJPEG printer (serial=$serialNumber), auto-configuring RTSPS: $rtspUrl")
+            _rtspEnabled.value = true
+            _rtspUrl.value = rtspUrl
+            _showMainStream.value = false
         }
 
         // Start MQTT in separate coroutine (non-fatal)
@@ -355,7 +369,19 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
 
         mqttJob = viewModelScope.launch {
             launch {
-                mqtt.connected.collect { _isMqttConnected.value = it }
+                mqtt.connected.collect {
+                    _isMqttConnected.value = it
+                    // For RTSPS printers, mark connected once MQTT is up
+                    if (it && !usesMjpegCamera(serialNumber) &&
+                        _connectionState.value == ConnectionState.Connecting
+                    ) {
+                        _connectionState.value = ConnectionState.Connected
+                        if (_keepConnectionInBackground.value) {
+                            val app = getApplication<Application>()
+                            app.startForegroundService(Intent(app, ConnectionForegroundService::class.java))
+                        }
+                    }
+                }
             }
             launch {
                 mqtt.lightOn.collect { _isLightOn.value = it }
@@ -394,6 +420,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         _connectedAccessCode.value = ""
         _rtspEnabled.value = false
         _rtspUrl.value = ""
+        _showMainStream.value = prefs.getBoolean("show_main_stream", true)
         _customBgColor.value = null
         _customPrinterName.value = ""
     }

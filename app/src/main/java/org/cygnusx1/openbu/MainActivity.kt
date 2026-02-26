@@ -7,6 +7,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import android.util.Log
 import androidx.annotation.OptIn
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
@@ -17,10 +18,16 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.rtsp.RtspMediaSource
 import kotlinx.coroutines.launch
+import java.security.cert.X509Certificate
+import javax.net.ssl.SSLContext
+import javax.net.ssl.TrustManager
+import javax.net.ssl.X509TrustManager
 import org.cygnusx1.openbu.ui.ConnectionScreen
 import org.cygnusx1.openbu.ui.DashboardScreen
 import org.cygnusx1.openbu.ui.FileManagerScreen
@@ -77,9 +84,46 @@ class MainActivity : ComponentActivity() {
                 @OptIn(UnstableApi::class)
                 val rtspPlayer = remember(effectiveRtspUrl) {
                     if (effectiveRtspUrl.isNotBlank()) {
+                        val isRtsps = effectiveRtspUrl.startsWith("rtsps://")
+                        val playerUrl = if (isRtsps) effectiveRtspUrl.replaceFirst("rtsps://", "rtsp://") else effectiveRtspUrl
+                        Log.d("RTSP", "Creating player: isRtsps=$isRtsps, playerUrl=$playerUrl")
                         ExoPlayer.Builder(this@MainActivity).build().apply {
-                            val mediaSource = RtspMediaSource.Factory()
-                                .createMediaSource(MediaItem.fromUri(effectiveRtspUrl))
+                            addListener(object : Player.Listener {
+                                override fun onPlaybackStateChanged(playbackState: Int) {
+                                    val stateName = when (playbackState) {
+                                        Player.STATE_IDLE -> "IDLE"
+                                        Player.STATE_BUFFERING -> "BUFFERING"
+                                        Player.STATE_READY -> "READY"
+                                        Player.STATE_ENDED -> "ENDED"
+                                        else -> "UNKNOWN($playbackState)"
+                                    }
+                                    Log.d("RTSP", "Playback state: $stateName")
+                                }
+                                override fun onPlayerError(error: PlaybackException) {
+                                    Log.e("RTSP", "Player error: ${error.errorCodeName} (${error.errorCode})", error)
+                                }
+                                override fun onIsPlayingChanged(isPlaying: Boolean) {
+                                    Log.d("RTSP", "isPlaying=$isPlaying")
+                                }
+                                override fun onRenderedFirstFrame() {
+                                    Log.d("RTSP", "First frame rendered")
+                                }
+                            })
+                            val factory = RtspMediaSource.Factory().apply {
+                                if (isRtsps) {
+                                    val trustAll = arrayOf<TrustManager>(object : X509TrustManager {
+                                        override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) {}
+                                        override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {}
+                                        override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
+                                    })
+                                    val sslContext = SSLContext.getInstance("TLS")
+                                    sslContext.init(null, trustAll, java.security.SecureRandom())
+                                    Log.d("RTSP", "Using trust-all SSLSocketFactory + forceRtpTcp")
+                                    setSocketFactory(sslContext.socketFactory)
+                                    setForceUseRtpTcp(true)
+                                }
+                            }
+                            val mediaSource = factory.createMediaSource(MediaItem.fromUri(playerUrl))
                             setMediaSource(mediaSource)
                             prepare()
                             playWhenReady = true
@@ -209,6 +253,9 @@ class MainActivity : ComponentActivity() {
                         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
                         BackHandler { showPrinterSettings = false }
                         val customPrinterName by viewModel.customPrinterName.collectAsState()
+                        val isAutoRtsp = connectedSerialNumber.length >= 3 &&
+                            !connectedSerialNumber.startsWith("01S") &&
+                            !connectedSerialNumber.startsWith("01P")
                         PrinterSettingsScreen(
                             customPrinterName = customPrinterName,
                             onCustomPrinterNameChanged = { viewModel.setCustomPrinterName(it) },
@@ -216,6 +263,7 @@ class MainActivity : ComponentActivity() {
                             onRtspEnabledChanged = { viewModel.setRtspEnabled(it) },
                             rtspUrl = rtspUrl,
                             onRtspUrlChanged = { viewModel.setRtspUrl(it) },
+                            isAutoRtsp = isAutoRtsp,
                             customBgColor = customBgColor,
                             onBgColorChanged = { viewModel.setCustomBgColor(it) },
                             isSaved = savedPrinters.any { it.serialNumber == connectedSerialNumber },
