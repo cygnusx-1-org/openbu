@@ -398,6 +398,12 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    fun setSpeedLevel(level: Int) {
+        viewModelScope.launch(Dispatchers.IO) {
+            mqttClient?.setSpeedLevel(level)
+        }
+    }
+
     private fun cleanupConnections() {
         streamJob?.cancel()
         streamJob = null

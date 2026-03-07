@@ -336,6 +336,7 @@ class MainActivity : ComponentActivity() {
                                 viewModel.openTimelapse()
                                 showTimelapse = true
                             },
+                            onSetSpeedLevel = { viewModel.setSpeedLevel(it) },
                         )
                     }
                     else -> {

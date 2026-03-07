@@ -25,15 +25,24 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -70,7 +79,21 @@ fun DashboardScreen(
     onOpenPrinterSettings: () -> Unit,
     onOpenFileManager: () -> Unit,
     onOpenTimelapse: () -> Unit,
+    onSetSpeedLevel: (Int) -> Unit,
 ) {
+    var showSpeedDialog by remember { mutableStateOf(false) }
+
+    if (showSpeedDialog) {
+        SpeedLevelDialog(
+            currentLevel = printerStatus.spdLvl,
+            onDismiss = { showSpeedDialog = false },
+            onConfirm = { level ->
+                onSetSpeedLevel(level)
+                showSpeedDialog = false
+            },
+        )
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -126,15 +149,24 @@ fun DashboardScreen(
                     )
                 }
             }
-            IconButton(
-                onClick = onOpenSettings,
+            Row(
                 modifier = Modifier.align(Alignment.CenterEnd),
+                horizontalArrangement = Arrangement.spacedBy(0.dp),
             ) {
-                Icon(
-                    imageVector = Icons.Filled.Settings,
-                    contentDescription = "Settings",
-                    tint = MaterialTheme.colorScheme.onBackground,
-                )
+                IconButton(onClick = { showSpeedDialog = true }) {
+                    Icon(
+                        imageVector = Icons.Filled.Speed,
+                        contentDescription = "Print Speed",
+                        tint = MaterialTheme.colorScheme.onBackground,
+                    )
+                }
+                IconButton(onClick = onOpenSettings) {
+                    Icon(
+                        imageVector = Icons.Filled.Settings,
+                        contentDescription = "Settings",
+                        tint = MaterialTheme.colorScheme.onBackground,
+                    )
+                }
             }
         }
 
@@ -574,6 +606,57 @@ private fun fanSpeedPercent(raw: String): Int {
     val value = raw.toIntOrNull() ?: return 0
     // Bambu reports fan speed as 0-15, map to percentage
     return ((value / 15.0) * 100).toInt()
+}
+
+@Composable
+private fun SpeedLevelDialog(
+    currentLevel: Int,
+    onDismiss: () -> Unit,
+    onConfirm: (Int) -> Unit,
+) {
+    var selectedLevel by remember { mutableIntStateOf(currentLevel) }
+
+    val speedOptions = listOf(
+        1 to "Silent (50%)",
+        2 to "Normal (100%)",
+        3 to "Sport (124%)",
+        4 to "Ludicrous (166%)",
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Print Speed") },
+        text = {
+            Column {
+                for ((level, label) in speedOptions) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { selectedLevel = level }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(
+                            selected = selectedLevel == level,
+                            onClick = { selectedLevel = level },
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(text = label, style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(selectedLevel) }) {
+                Text("Set")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+    )
 }
 
 private fun parseHexColor(hex: String): Color {

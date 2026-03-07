@@ -30,6 +30,7 @@ data class PrinterStatus(
     val bigFan1Speed: String = "0",
     val amsUnits: List<AmsUnit> = emptyList(),
     val vtTray: AmsTray? = null,
+    val spdLvl: Int = 2, // 2 = Normal = 100%
 )
 
 data class SavedPrinter(

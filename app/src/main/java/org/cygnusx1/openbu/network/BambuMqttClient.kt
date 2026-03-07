@@ -176,6 +176,28 @@ class BambuMqttClient(
         }
     }
 
+    fun setSpeedLevel(level: Int) {
+        val out = socketOutput ?: return
+        val json = JSONObject().apply {
+            put("print", JSONObject().apply {
+                put("sequence_id", "0")
+                put("command", "print_speed")
+                put("param", level.toString())
+            })
+        }
+        try {
+            val topic = "device/$serialNumber/request"
+            if (debugLogging) Log.d(TAG, "Publishing print_speed param=$level to $topic")
+            val packet = buildPublishPacket(topic, json.toString())
+            synchronized(out) {
+                out.write(packet)
+                out.flush()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to publish print_speed", e)
+        }
+    }
+
     private fun requestStatus() {
         val out = socketOutput ?: return
         val json = JSONObject().apply {
@@ -234,6 +256,18 @@ class BambuMqttClient(
         val heatbreakFan = print.optString("heatbreak_fan_speed", "").ifEmpty { current.heatbreakFanSpeed }
         val coolingFan = print.optString("cooling_fan_speed", "").ifEmpty { current.coolingFanSpeed }
         val bigFan1 = print.optString("big_fan1_speed", "").ifEmpty { current.bigFan1Speed }
+        // Log all keys containing "spd" or "speed" to find the correct field name
+        val speedKeys = print.keys().asSequence().filter {
+            it.contains("spd", ignoreCase = true) || it.contains("speed", ignoreCase = true)
+        }.toList()
+        if (speedKeys.isNotEmpty()) {
+            Log.d(TAG, "Speed-related keys in print: $speedKeys -> ${speedKeys.map { print.opt(it) }}")
+        }
+        val spdLvl = when {
+            print.has("spd_lvl") -> print.optInt("spd_lvl")
+            print.has("speed_level") -> print.optInt("speed_level")
+            else -> current.spdLvl
+        }
 
         var amsUnits = current.amsUnits
         var vtTray = current.vtTray
@@ -308,6 +342,7 @@ class BambuMqttClient(
             bigFan1Speed = bigFan1,
             amsUnits = amsUnits,
             vtTray = vtTray,
+            spdLvl = spdLvl,
         )
         _printerStatus.value = newStatus
 
