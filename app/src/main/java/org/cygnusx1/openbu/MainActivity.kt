@@ -10,6 +10,9 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import android.util.Log
 import androidx.annotation.OptIn
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
 import androidx.compose.runtime.DisposableEffect
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.compose.runtime.collectAsState
@@ -42,7 +45,9 @@ import org.cygnusx1.openbu.ui.SettingsScreen
 import org.cygnusx1.openbu.ui.SkipObjectsScreen
 import org.cygnusx1.openbu.ui.StreamScreen
 import org.cygnusx1.openbu.ui.VideoPlayerScreen
+import org.cygnusx1.openbu.ui.VlcPlayerHolder
 import org.cygnusx1.openbu.ui.VlcRtspStreamScreen
+import org.cygnusx1.openbu.ui.rememberVlcContent
 import org.cygnusx1.openbu.ui.theme.OpenbuTheme
 import org.cygnusx1.openbu.viewmodel.BambuStreamViewModel
 import org.cygnusx1.openbu.viewmodel.ConnectionState
@@ -182,39 +187,55 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                // Internal RTSP player (non-P1 printer built-in camera) — skip if VLC mode
+                // Internal RTSP player (non-P1 printer built-in camera) — always ExoPlayer
                 @OptIn(UnstableApi::class)
-                val internalRtspPlayer = remember(internalRtspUrl, rtspReconnectKey, useVlcForRtsp) {
+                val internalRtspPlayer = remember(internalRtspUrl, rtspReconnectKey) {
                     if (internalRtspUrl.isNotBlank()) {
-                        if (useVlcForRtsp) {
-                            Log.d("RTSP-Internal", "Using VLC decoder for: $internalRtspUrl")
-                            null
-                        } else {
-                            Log.d("RTSP-Internal", "Using ExoPlayer decoder for: $internalRtspUrl")
-                            createRtspPlayer(internalRtspUrl, "RTSP-Internal")
-                        }
+                        Log.d("RTSP-Internal", "Using ExoPlayer decoder for: $internalRtspUrl")
+                        createRtspPlayer(internalRtspUrl, "RTSP-Internal")
                     } else null
                 }
-                DisposableEffect(internalRtspUrl, rtspReconnectKey, useVlcForRtsp) {
+                DisposableEffect(internalRtspUrl, rtspReconnectKey) {
                     onDispose { internalRtspPlayer?.release() }
                 }
 
-                // External RTSP player (user-configured secondary camera) — skip if VLC mode
+                // External RTSP player (user-configured secondary camera)
                 @OptIn(UnstableApi::class)
                 val rtspPlayer = remember(effectiveRtspUrl, rtspReconnectKey, useVlcForRtsp) {
-                    if (effectiveRtspUrl.isNotBlank()) {
-                        if (useVlcForRtsp) {
-                            Log.d("RTSP-External", "Using VLC decoder for: $effectiveRtspUrl")
-                            null
-                        } else {
-                            Log.d("RTSP-External", "Using ExoPlayer decoder for: $effectiveRtspUrl")
-                            createRtspPlayer(effectiveRtspUrl, "RTSP-External")
-                        }
+                    if (!useVlcForRtsp && effectiveRtspUrl.isNotBlank()) {
+                        Log.d("RTSP-External", "Using ExoPlayer decoder for: $effectiveRtspUrl")
+                        createRtspPlayer(effectiveRtspUrl, "RTSP-External")
                     } else null
                 }
                 DisposableEffect(effectiveRtspUrl, rtspReconnectKey, useVlcForRtsp) {
                     onDispose { rtspPlayer?.release() }
                 }
+                val externalVlcPlayer = remember(effectiveRtspUrl, rtspReconnectKey, useVlcForRtsp) {
+                    if (useVlcForRtsp && effectiveRtspUrl.isNotBlank()) {
+                        Log.d("RTSP-External", "Using VLC decoder for: $effectiveRtspUrl")
+                        VlcPlayerHolder(this@MainActivity, effectiveRtspUrl, "RTSP-External")
+                    } else null
+                }
+                DisposableEffect(effectiveRtspUrl, rtspReconnectKey, useVlcForRtsp) {
+                    onDispose { externalVlcPlayer?.release() }
+                }
+
+                // Card VLC content — stays alive permanently in the dashboard card
+                val externalVlcContent = rememberVlcContent(externalVlcPlayer)
+
+                // Fullscreen VLC player — separate instance created only when fullscreen is shown.
+                // The card player above is never touched during navigation, so it keeps playing
+                // on return without any surface swap or reconnection.
+                val fullscreenVlcPlayer = remember(effectiveRtspUrl, rtspReconnectKey, showRtspFullscreen, useVlcForRtsp) {
+                    if (useVlcForRtsp && showRtspFullscreen && effectiveRtspUrl.isNotBlank()) {
+                        Log.d("RTSP-Fullscreen", "Using VLC decoder for fullscreen: $effectiveRtspUrl")
+                        VlcPlayerHolder(this@MainActivity, effectiveRtspUrl, "RTSP-Fullscreen")
+                    } else null
+                }
+                DisposableEffect(effectiveRtspUrl, rtspReconnectKey, showRtspFullscreen, useVlcForRtsp) {
+                    onDispose { fullscreenVlcPlayer?.release() }
+                }
+                val fullscreenVlcContent = rememberVlcContent(fullscreenVlcPlayer)
 
                 val fileList by viewModel.fileList.collectAsState()
                 val currentFtpPath by viewModel.currentFtpPath.collectAsState()
@@ -405,24 +426,17 @@ class MainActivity : ComponentActivity() {
                             showInternalRtspFullscreen = false
                             requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
                         }
-                        if (useVlcForRtsp) VlcRtspStreamScreen(url = internalRtspUrl)
-                        else RtspStreamScreen(player = internalRtspPlayer)
-                    }
-                    connectionState == ConnectionState.Connected && showRtspFullscreen && effectiveRtspUrl.isNotBlank() -> {
-                        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-                        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR
-                        BackHandler {
-                            showRtspFullscreen = false
-                            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-                        }
-                        if (useVlcForRtsp) VlcRtspStreamScreen(url = effectiveRtspUrl)
-                        else RtspStreamScreen(player = rtspPlayer)
+                        RtspStreamScreen(player = internalRtspPlayer)
                     }
                     connectionState == ConnectionState.Connected || hasLastConnectedPrinter -> {
                         if (connectionState == ConnectionState.Connected) {
                             window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                         }
-                        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                        // Orientation driven by fullscreen overlay state
+                        requestedOrientation = if (connectionState == ConnectionState.Connected && showRtspFullscreen && effectiveRtspUrl.isNotBlank())
+                            ActivityInfo.SCREEN_ORIENTATION_SENSOR
+                        else
+                            ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
                         BackHandler {
                             showFullscreen = false
                             showRtspFullscreen = false
@@ -445,6 +459,10 @@ class MainActivity : ComponentActivity() {
                                 ?: savedPrinters.firstOrNull { it.serialNumber == connectedSerialNumber }?.deviceName
                                 ?: ""
                         }
+                        // Wrap in a Box so the fullscreen VLC overlay can sit above the dashboard
+                        // without unmounting it. DashboardScreen (and the card VLC view) stays
+                        // composed the whole time, keeping the card player's SurfaceView alive.
+                        Box(modifier = Modifier.fillMaxSize()) {
                         DashboardScreen(
                             frame = frame,
                             fps = fps,
@@ -456,9 +474,7 @@ class MainActivity : ComponentActivity() {
                             showMainStream = showMainStream,
                             internalRtspPlayer = internalRtspPlayer,
                             rtspPlayer = rtspPlayer,
-                            useVlcForRtsp = useVlcForRtsp,
-                            internalRtspUrl = internalRtspUrl,
-                            externalRtspUrl = effectiveRtspUrl,
+                            externalVlcContent = externalVlcContent,
                             isReconnecting = isReconnecting,
                             mjpegCameraFailed = mjpegCameraFailed,
                             noRouteToHost = noRouteToHost,
@@ -496,6 +512,16 @@ class MainActivity : ComponentActivity() {
                                 viewModel.setFilament(amsId, trayId, profile, colorHex)
                             },
                         )
+                        // VLC fullscreen overlay — rendered on top of the dashboard so the
+                        // card player's SurfaceView is never detached from the window.
+                        if (connectionState == ConnectionState.Connected && showRtspFullscreen && effectiveRtspUrl.isNotBlank()) {
+                            BackHandler {
+                                showRtspFullscreen = false
+                            }
+                            if (fullscreenVlcContent != null) VlcRtspStreamScreen(vlcContent = fullscreenVlcContent)
+                            else RtspStreamScreen(player = rtspPlayer)
+                        }
+                        } // end Box
                     }
                     else -> {
                         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)

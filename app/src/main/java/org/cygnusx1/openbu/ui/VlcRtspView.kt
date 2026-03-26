@@ -1,7 +1,9 @@
 package org.cygnusx1.openbu.ui
 
+import android.content.Context
 import android.net.Uri
 import android.util.Log
+import android.view.ViewGroup
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -13,14 +15,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import org.videolan.libvlc.LibVLC
@@ -32,73 +32,79 @@ private const val TAG = "VlcRtsp"
 private const val MIN_SCALE = 1f
 private const val MAX_SCALE = 5f
 
-@Composable
-private fun rememberVlcPlayer(url: String): Pair<LibVLC, MediaPlayer>? {
-    val context = LocalContext.current
-    val result = remember(url) {
-        if (url.isBlank()) return@remember null
-        Log.d(TAG, "Creating VLC player for: $url")
-        val vlc = LibVLC(context, arrayListOf(
-            "--network-caching=300",
-            "--rtsp-tcp",
-            "--no-audio",
-        ))
-        val player = MediaPlayer(vlc)
-        val media = Media(vlc, Uri.parse(url))
+class VlcPlayerHolder(context: Context, url: String, tag: String) {
+    val libVlc = LibVLC(context, arrayListOf(
+        "--network-caching=300",
+        "--rtsp-tcp",
+        "--no-audio",
+    ))
+    val player = MediaPlayer(libVlc)
+    val videoLayout = VLCVideoLayout(context)
+
+    init {
+        Log.d(TAG, "$tag: Creating VLC player for: $url")
+        val media = Media(libVlc, Uri.parse(url))
         media.setHWDecoderEnabled(false, true)
         player.media = media
         media.release()
-        Pair(vlc, player)
+        player.attachViews(videoLayout, null, false, false)
+        player.play()
     }
-    DisposableEffect(url) {
-        onDispose {
-            result?.let { (vlc, player) ->
-                Log.d(TAG, "Disposing VLC player")
-                player.stop()
-                player.detachViews()
-                player.release()
-                vlc.release()
-            }
+
+    fun release() {
+        Log.d(TAG, "Releasing VLC player")
+        player.stop()
+        player.detachViews()
+        player.release()
+        libVlc.release()
+    }
+}
+
+/**
+ * Creates a movable AndroidView that reparents the VLCVideoLayout without
+ * destroying the surface. Call this once per holder above any conditional
+ * branches (when/if), then invoke the returned lambda in exactly one branch
+ * at a time with the desired modifier.
+ */
+@Composable
+fun rememberVlcContent(
+    holder: VlcPlayerHolder?,
+): (@Composable (Modifier) -> Unit)? {
+    if (holder == null) return null
+    val content = remember(holder) {
+        androidx.compose.runtime.movableContentOf { modifier: Modifier ->
+            AndroidView(
+                factory = {
+                    (holder.videoLayout.parent as? ViewGroup)?.removeView(holder.videoLayout)
+                    holder.videoLayout
+                },
+                modifier = modifier,
+            )
         }
     }
-    return result
+    return content
 }
 
 @Composable
-fun VlcRtspStreamCard(url: String, onClick: () -> Unit) {
-    val vlcPair = rememberVlcPlayer(url)
+fun VlcRtspStreamCard(
+    vlcContent: @Composable (Modifier) -> Unit,
+    onClick: () -> Unit,
+) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable { onClick() },
         shape = RoundedCornerShape(12.dp),
     ) {
-        if (vlcPair != null) {
-            val (_, player) = vlcPair
-            AndroidView(
-                factory = { ctx ->
-                    VLCVideoLayout(ctx).also { layout ->
-                        player.attachViews(layout, null, false, false)
-                        player.play()
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(16f / 9f)
-                    .background(Color.Black),
-            )
-        } else {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(16f / 9f)
-                    .background(Color.Black),
-            )
-        }
+        vlcContent(
+            Modifier
+                .fillMaxWidth()
+                .aspectRatio(16f / 9f)
+                .background(Color.Black)
+        )
     }
 }
 
 @Composable
-fun VlcRtspStreamScreen(url: String) {
-    val vlcPair = rememberVlcPlayer(url)
+fun VlcRtspStreamScreen(vlcContent: @Composable (Modifier) -> Unit) {
     val scale = remember { mutableFloatStateOf(1f) }
     val offsetX = remember { mutableFloatStateOf(0f) }
     val offsetY = remember { mutableFloatStateOf(0f) }
@@ -130,24 +136,15 @@ fun VlcRtspStreamScreen(url: String) {
                 }
             },
     ) {
-        if (vlcPair != null) {
-            val (_, player) = vlcPair
-            AndroidView(
-                factory = { ctx ->
-                    VLCVideoLayout(ctx).also { layout ->
-                        player.attachViews(layout, null, false, false)
-                        player.play()
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer {
-                        scaleX = scale.floatValue
-                        scaleY = scale.floatValue
-                        translationX = offsetX.floatValue
-                        translationY = offsetY.floatValue
-                    },
-            )
-        }
+        vlcContent(
+            Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    scaleX = scale.floatValue
+                    scaleY = scale.floatValue
+                    translationX = offsetX.floatValue
+                    translationY = offsetY.floatValue
+                }
+        )
     }
 }
