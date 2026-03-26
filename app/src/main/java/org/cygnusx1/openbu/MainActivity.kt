@@ -42,6 +42,7 @@ import org.cygnusx1.openbu.ui.SettingsScreen
 import org.cygnusx1.openbu.ui.SkipObjectsScreen
 import org.cygnusx1.openbu.ui.StreamScreen
 import org.cygnusx1.openbu.ui.VideoPlayerScreen
+import org.cygnusx1.openbu.ui.VlcRtspStreamScreen
 import org.cygnusx1.openbu.ui.theme.OpenbuTheme
 import org.cygnusx1.openbu.viewmodel.BambuStreamViewModel
 import org.cygnusx1.openbu.viewmodel.ConnectionState
@@ -109,6 +110,7 @@ class MainActivity : ComponentActivity() {
                 val internalRtspUrl by viewModel.internalRtspUrl.collectAsState()
                 val rtspEnabled by viewModel.rtspEnabled.collectAsState()
                 val rtspUrl by viewModel.rtspUrl.collectAsState()
+                val useVlcForRtsp by viewModel.useVlcForRtsp.collectAsState()
                 val debugLogging by viewModel.debugLogging.collectAsState()
                 val redactLogs by viewModel.redactLogs.collectAsState()
                 val discoveredPrinters by viewModel.discoveredPrinters.collectAsState()
@@ -180,21 +182,37 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                // Internal RTSP player (non-P1 printer built-in camera)
+                // Internal RTSP player (non-P1 printer built-in camera) — skip if VLC mode
                 @OptIn(UnstableApi::class)
-                val internalRtspPlayer = remember(internalRtspUrl, rtspReconnectKey) {
-                    if (internalRtspUrl.isNotBlank()) createRtspPlayer(internalRtspUrl, "RTSP-Internal") else null
+                val internalRtspPlayer = remember(internalRtspUrl, rtspReconnectKey, useVlcForRtsp) {
+                    if (internalRtspUrl.isNotBlank()) {
+                        if (useVlcForRtsp) {
+                            Log.d("RTSP-Internal", "Using VLC decoder for: $internalRtspUrl")
+                            null
+                        } else {
+                            Log.d("RTSP-Internal", "Using ExoPlayer decoder for: $internalRtspUrl")
+                            createRtspPlayer(internalRtspUrl, "RTSP-Internal")
+                        }
+                    } else null
                 }
-                DisposableEffect(internalRtspUrl, rtspReconnectKey) {
+                DisposableEffect(internalRtspUrl, rtspReconnectKey, useVlcForRtsp) {
                     onDispose { internalRtspPlayer?.release() }
                 }
 
-                // External RTSP player (user-configured secondary camera)
+                // External RTSP player (user-configured secondary camera) — skip if VLC mode
                 @OptIn(UnstableApi::class)
-                val rtspPlayer = remember(effectiveRtspUrl, rtspReconnectKey) {
-                    if (effectiveRtspUrl.isNotBlank()) createRtspPlayer(effectiveRtspUrl, "RTSP-External") else null
+                val rtspPlayer = remember(effectiveRtspUrl, rtspReconnectKey, useVlcForRtsp) {
+                    if (effectiveRtspUrl.isNotBlank()) {
+                        if (useVlcForRtsp) {
+                            Log.d("RTSP-External", "Using VLC decoder for: $effectiveRtspUrl")
+                            null
+                        } else {
+                            Log.d("RTSP-External", "Using ExoPlayer decoder for: $effectiveRtspUrl")
+                            createRtspPlayer(effectiveRtspUrl, "RTSP-External")
+                        }
+                    } else null
                 }
-                DisposableEffect(effectiveRtspUrl, rtspReconnectKey) {
+                DisposableEffect(effectiveRtspUrl, rtspReconnectKey, useVlcForRtsp) {
                     onDispose { rtspPlayer?.release() }
                 }
 
@@ -336,6 +354,8 @@ class MainActivity : ComponentActivity() {
                             onAutoSavePrinterChanged = { viewModel.setAutoSavePrinter(it) },
                             forceDarkMode = forceDarkMode,
                             onForceDarkModeChanged = { viewModel.setForceDarkMode(it) },
+                            useVlcForRtsp = useVlcForRtsp,
+                            onUseVlcForRtspChanged = { viewModel.setUseVlcForRtsp(it) },
                             debugLogging = debugLogging,
                             onDebugLoggingChanged = { viewModel.setDebugLogging(it) },
                             redactLogs = redactLogs,
@@ -385,7 +405,8 @@ class MainActivity : ComponentActivity() {
                             showInternalRtspFullscreen = false
                             requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
                         }
-                        RtspStreamScreen(player = internalRtspPlayer)
+                        if (useVlcForRtsp) VlcRtspStreamScreen(url = internalRtspUrl)
+                        else RtspStreamScreen(player = internalRtspPlayer)
                     }
                     connectionState == ConnectionState.Connected && showRtspFullscreen && effectiveRtspUrl.isNotBlank() -> {
                         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -394,7 +415,8 @@ class MainActivity : ComponentActivity() {
                             showRtspFullscreen = false
                             requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
                         }
-                        RtspStreamScreen(player = rtspPlayer)
+                        if (useVlcForRtsp) VlcRtspStreamScreen(url = effectiveRtspUrl)
+                        else RtspStreamScreen(player = rtspPlayer)
                     }
                     connectionState == ConnectionState.Connected || hasLastConnectedPrinter -> {
                         if (connectionState == ConnectionState.Connected) {
@@ -434,6 +456,9 @@ class MainActivity : ComponentActivity() {
                             showMainStream = showMainStream,
                             internalRtspPlayer = internalRtspPlayer,
                             rtspPlayer = rtspPlayer,
+                            useVlcForRtsp = useVlcForRtsp,
+                            internalRtspUrl = internalRtspUrl,
+                            externalRtspUrl = effectiveRtspUrl,
                             isReconnecting = isReconnecting,
                             mjpegCameraFailed = mjpegCameraFailed,
                             noRouteToHost = noRouteToHost,

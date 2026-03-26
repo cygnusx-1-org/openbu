@@ -130,6 +130,9 @@ fun DashboardScreen(
     showMainStream: Boolean,
     internalRtspPlayer: ExoPlayer?,
     rtspPlayer: ExoPlayer?,
+    useVlcForRtsp: Boolean = false,
+    internalRtspUrl: String = "",
+    externalRtspUrl: String = "",
     isReconnecting: Boolean = false,
     mjpegCameraFailed: Boolean = false,
     noRouteToHost: String? = null,
@@ -489,13 +492,19 @@ fun DashboardScreen(
         }
 
         // Internal RTSP stream (non-P1 printer built-in camera)
-        if (showMainStream && internalRtspPlayer != null) {
+        if (showMainStream && useVlcForRtsp && internalRtspUrl.isNotBlank()) {
+            VlcRtspStreamCard(url = internalRtspUrl, onClick = onOpenInternalRtspFullscreen)
+            Spacer(modifier = Modifier.height(VerticalCardPadding))
+        } else if (showMainStream && internalRtspPlayer != null) {
             RtspStreamCard(player = internalRtspPlayer, onClick = onOpenInternalRtspFullscreen)
             Spacer(modifier = Modifier.height(VerticalCardPadding))
         }
 
         // External RTSP stream
-        if (rtspPlayer != null) {
+        if (useVlcForRtsp && externalRtspUrl.isNotBlank()) {
+            VlcRtspStreamCard(url = externalRtspUrl, onClick = onOpenRtspFullscreen)
+            Spacer(modifier = Modifier.height(VerticalCardPadding))
+        } else if (rtspPlayer != null) {
             RtspStreamCard(player = rtspPlayer, onClick = onOpenRtspFullscreen)
             Spacer(modifier = Modifier.height(VerticalCardPadding))
         }
