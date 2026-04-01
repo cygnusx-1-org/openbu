@@ -1,0 +1,11 @@
+app:
+  name: Openbu 
+  authors: Nathan Grennan
+  category: tools
+  description: Openbu is a Kotlin Android app for Bambu 3D printers in Developer Mode
+  icon: https://raw.githubusercontent.com/cygnusx-1-org/openbu/refs/heads/master/app/src/main/ic_launcher-playstore.png
+  id: org.cygnusx1.openbu
+  type: curated
+  verified: true
+  releases:
+    url: https://github.com/cygnusx-1-org/openbu/releases
