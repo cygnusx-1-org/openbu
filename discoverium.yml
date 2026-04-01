@@ -1,5 +1,5 @@
 app:
-  name: Openbu 
+  name: Openbu
   authors: Nathan Grennan
   category: tools
   description: Openbu is a Kotlin Android app for Bambu 3D printers in Developer Mode
