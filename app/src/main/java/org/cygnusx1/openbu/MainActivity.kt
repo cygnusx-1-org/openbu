@@ -95,6 +95,7 @@ class MainActivity : ComponentActivity() {
                 viewModel.retryIfNeeded()
                 onPauseOrDispose {}
             }
+            var vlcResumeKey by remember { mutableStateOf(0) }
             val forceDarkMode by viewModel.forceDarkMode.collectAsState()
             val customBgColor by viewModel.customBgColor.collectAsState()
             val connectionState by viewModel.connectionState.collectAsState()
@@ -236,6 +237,16 @@ class MainActivity : ComponentActivity() {
                     onDispose { fullscreenVlcPlayer?.release() }
                 }
                 val fullscreenVlcContent = rememberVlcContent(fullscreenVlcPlayer)
+
+                // Resume VLC players when returning from background
+                LifecycleResumeEffect(externalVlcPlayer, fullscreenVlcPlayer) {
+                    if (vlcResumeKey > 0) {
+                        externalVlcPlayer?.resume()
+                        fullscreenVlcPlayer?.resume()
+                    }
+                    vlcResumeKey++
+                    onPauseOrDispose {}
+                }
 
                 val fileList by viewModel.fileList.collectAsState()
                 val currentFtpPath by viewModel.currentFtpPath.collectAsState()

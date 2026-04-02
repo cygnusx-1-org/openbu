@@ -32,7 +32,7 @@ private const val TAG = "VlcRtsp"
 private const val MIN_SCALE = 1f
 private const val MAX_SCALE = 5f
 
-class VlcPlayerHolder(context: Context, url: String, tag: String) {
+class VlcPlayerHolder(context: Context, private val url: String, tag: String) {
     val libVlc = LibVLC(context, arrayListOf(
         "--network-caching=300",
         "--rtsp-tcp",
@@ -43,6 +43,18 @@ class VlcPlayerHolder(context: Context, url: String, tag: String) {
 
     init {
         Log.d(TAG, "$tag: Creating VLC player for: $url")
+        val media = Media(libVlc, Uri.parse(url))
+        media.setHWDecoderEnabled(false, true)
+        player.media = media
+        media.release()
+        player.attachViews(videoLayout, null, false, false)
+        player.play()
+    }
+
+    fun resume() {
+        Log.d(TAG, "Resuming VLC player, reconnecting to: $url")
+        player.stop()
+        player.detachViews()
         val media = Media(libVlc, Uri.parse(url))
         media.setHWDecoderEnabled(false, true)
         player.media = media
