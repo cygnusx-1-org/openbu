@@ -14,12 +14,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -35,6 +38,8 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 
 private fun redactLogText(text: String, accessCode: String, serialNumber: String): String {
@@ -112,32 +117,36 @@ fun SettingsScreen(
         )
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
-    ) {
-        TopAppBar(
-            title = { Text("Settings") },
-            navigationIcon = {
-                IconButton(onClick = onBack) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
-                    )
-                }
-            },
-            actions = {
-                IconButton(onClick = { showAboutDialog = true }) {
-                    Icon(
-                        imageVector = Icons.Filled.Info,
-                        contentDescription = "About",
-                    )
-                }
-            },
-        )
-
-        Column(modifier = Modifier.padding(16.dp).verticalScroll(rememberScrollState())) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Settings") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { showAboutDialog = true }) {
+                        Icon(
+                            imageVector = Icons.Filled.Info,
+                            contentDescription = "About",
+                        )
+                    }
+                },
+            )
+        },
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .padding(padding),
+        ) {
+            Column(modifier = Modifier.padding(16.dp).verticalScroll(rememberScrollState())) {
             // Persistent connection
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -337,6 +346,7 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
+            var passwordVisible by remember { mutableStateOf(false) }
             OutlinedTextField(
                 value = relayPassword,
                 onValueChange = onRelayPasswordChanged,
@@ -344,6 +354,14 @@ fun SettingsScreen(
                 singleLine = true,
                 enabled = relayEnabled,
                 modifier = Modifier.fillMaxWidth(),
+                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = {
+                    val image = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
+                    val description = if (passwordVisible) "Hide password" else "Show password"
+                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                        Icon(imageVector = image, contentDescription = description)
+                    }
+                },
             )
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -463,6 +481,7 @@ fun SettingsScreen(
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+            }
             }
         }
     }
