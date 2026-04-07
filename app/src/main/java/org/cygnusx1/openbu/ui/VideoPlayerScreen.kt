@@ -60,7 +60,8 @@ private fun estimateAviDuration(file: File): Float {
     }
 }
 
-private fun calcRate(durationSec: Float): Float {
+private fun calcRate(durationSec: Float, isMp4: Boolean): Float {
+    if (isMp4) return 1.0f
     if (durationSec <= 0f) return MAX_RATE
     return (durationSec / TARGET_PLAYBACK_SECONDS).coerceIn(MIN_RATE, MAX_RATE)
 }
@@ -73,9 +74,10 @@ fun VideoPlayerScreen(
     val context = LocalContext.current
 
     val (libVlc, mediaPlayer, rate) = remember(videoFile) {
-        val durationSec = estimateAviDuration(videoFile)
-        val rate = calcRate(durationSec)
-        Log.d(TAG, "Calculated rate: $rate (duration: ${durationSec}s)")
+        val isMp4 = videoFile.name.lowercase().endsWith(".mp4")
+        val durationSec = if (isMp4) 0f else estimateAviDuration(videoFile)
+        val rate = calcRate(durationSec, isMp4)
+        Log.d(TAG, "Calculated rate: $rate (duration: ${durationSec}s, isMp4: $isMp4)")
 
         val vlc = LibVLC(context)
         val player = MediaPlayer(vlc)

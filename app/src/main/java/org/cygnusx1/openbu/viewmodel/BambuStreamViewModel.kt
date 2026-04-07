@@ -1367,7 +1367,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
                 client.connect()
                 timelapseFtpClient = client
                 val files = client.listDirectory("/timelapse")
-                    .filter { !it.isDirectory && it.name.lowercase().endsWith(".avi") }
+                    .filter { !it.isDirectory && (it.name.lowercase().endsWith(".avi") || it.name.lowercase().endsWith(".mp4")) }
                     .sortedByDescending { it.lastModified }
                 _timelapseFileList.value = files
                 loadThumbnails(files)
