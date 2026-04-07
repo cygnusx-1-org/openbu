@@ -1,6 +1,7 @@
 package org.cygnusx1.openbu.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,18 +13,17 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Article
+import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -34,69 +34,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-
-private fun redactLogText(text: String, accessCode: String, serialNumber: String): String {
-    var redacted = text
-    if (accessCode.isNotEmpty()) {
-        redacted = redacted.replace(accessCode, "REDACTED")
-    }
-    if (serialNumber.isNotEmpty()) {
-        redacted = redacted.replace(serialNumber, "REDACTED")
-    }
-    // Redact passwords (e.g., "PASS a1b2c3d4")
-    redacted = Regex("""(?<=PASS )\S+""").replace(redacted, "REDACTED")
-    // Redact IP addresses (e.g., "10.0.0.1")
-    redacted = Regex("""\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b""").replace(redacted, "REDACTED")
-    // Redact PASV IP format (e.g., "(10,0,0,1,7,232)")
-    redacted = Regex("""\(\d{1,3},\d{1,3},\d{1,3},\d{1,3},""").replace(redacted, "(REDACTED,")
-    return redacted
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    keepConnectionInBackground: Boolean,
-    onKeepConnectionChanged: (Boolean) -> Unit,
-    showMainStream: Boolean,
-    onShowMainStreamChanged: (Boolean) -> Unit,
-    autoSavePrinter: Boolean,
-    onAutoSavePrinterChanged: (Boolean) -> Unit,
-    forceDarkMode: Boolean,
-    onForceDarkModeChanged: (Boolean) -> Unit,
-    relayEnabled: Boolean,
-    onRelayEnabledChanged: (Boolean) -> Unit,
-    relayHost: String,
-    onRelayHostChanged: (String) -> Unit,
-    relayPort: String,
-    onRelayPortChanged: (String) -> Unit,
-    relayUsername: String,
-    onRelayUsernameChanged: (String) -> Unit,
-    relayPassword: String,
-    onRelayPasswordChanged: (String) -> Unit,
-    useVlcForRtsp: Boolean,
-    onUseVlcForRtspChanged: (Boolean) -> Unit,
-    debugLogging: Boolean,
-    onDebugLoggingChanged: (Boolean) -> Unit,
-    redactLogs: Boolean,
-    onRedactLogsChanged: (Boolean) -> Unit,
-    mqttDataMessages: List<String>,
-    logcatText: String,
-    accessCode: String,
-    serialNumber: String,
-    onCaptureLogcat: () -> Unit,
+    onOpenGeneralSettings: () -> Unit,
+    onOpenRelaySettings: () -> Unit,
+    onOpenDebuggingSettings: () -> Unit,
     onBack: () -> Unit,
 ) {
     var showAboutDialog by remember { mutableStateOf(false) }
-    var showMqttDataDialog by remember { mutableStateOf(false) }
-    var showLogcatDialog by remember { mutableStateOf(false) }
-    val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
     val versionName = remember {
         context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "Unknown"
@@ -144,420 +93,109 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
-                .padding(padding),
+                .padding(padding)
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState()),
         ) {
-            Column(modifier = Modifier.padding(16.dp).verticalScroll(rememberScrollState())) {
-            // Persistent connection
-            Row(
+            // General Settings button
+            Card(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
+                onClick = onOpenGeneralSettings,
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Persistent connection",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onBackground,
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Settings,
+                        contentDescription = null,
+                        modifier = Modifier.padding(end = 16.dp),
                     )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = "Maintain printer connection when the app is in the background",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    Column {
+                        Text(
+                            text = "General Settings",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onBackground,
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "Connection, display, and app preferences",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
-                Switch(
-                    checked = keepConnectionInBackground,
-                    onCheckedChange = onKeepConnectionChanged,
-                )
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Internal stream toggle
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Internal stream",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onBackground,
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = "Show the Bambu camera stream on the dashboard",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Switch(
-                    checked = showMainStream,
-                    onCheckedChange = onShowMainStreamChanged,
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Auto-save printers
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Auto-save printers",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onBackground,
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = "Default to saving printers on connect",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Switch(
-                    checked = autoSavePrinter,
-                    onCheckedChange = onAutoSavePrinterChanged,
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Force dark mode toggle
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Override device theme",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onBackground,
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = "Use the opposite of the device's light/dark mode",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Switch(
-                    checked = forceDarkMode,
-                    onCheckedChange = onForceDarkModeChanged,
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // VLC decoder toggle
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Use VLC decoder for RTSP",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onBackground,
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = "Software decoder for devices that can't play high-res streams",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Switch(
-                    checked = useVlcForRtsp,
-                    onCheckedChange = onUseVlcForRtspChanged,
-                )
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Text(
-                text = "Remote Relay",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Relay enabled toggle
-            Row(
+            // Remote Relay button
+            Card(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
+                onClick = onOpenRelaySettings,
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Enable relay",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onBackground,
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Wifi,
+                        contentDescription = null,
+                        modifier = Modifier.padding(end = 16.dp),
                     )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = "Route all printer traffic through a SOCKS5 relay",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Switch(
-                    checked = relayEnabled,
-                    onCheckedChange = onRelayEnabledChanged,
-                )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            OutlinedTextField(
-                value = relayHost,
-                onValueChange = onRelayHostChanged,
-                label = { Text("Relay hostname") },
-                placeholder = { Text("relay.example.com") },
-                singleLine = true,
-                enabled = relayEnabled,
-                modifier = Modifier.fillMaxWidth(),
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            OutlinedTextField(
-                value = relayPort,
-                onValueChange = onRelayPortChanged,
-                label = { Text("Relay port") },
-                placeholder = { Text("1080") },
-                singleLine = true,
-                enabled = relayEnabled,
-                modifier = Modifier.fillMaxWidth(),
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            OutlinedTextField(
-                value = relayUsername,
-                onValueChange = onRelayUsernameChanged,
-                label = { Text("Relay username") },
-                singleLine = true,
-                enabled = relayEnabled,
-                modifier = Modifier.fillMaxWidth(),
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            var passwordVisible by remember { mutableStateOf(false) }
-            OutlinedTextField(
-                value = relayPassword,
-                onValueChange = onRelayPasswordChanged,
-                label = { Text("Relay password") },
-                singleLine = true,
-                enabled = relayEnabled,
-                modifier = Modifier.fillMaxWidth(),
-                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                trailingIcon = {
-                    val image = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
-                    val description = if (passwordVisible) "Hide password" else "Show password"
-                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                        Icon(imageVector = image, contentDescription = description)
+                    Column {
+                        Text(
+                            text = "Remote Relay",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onBackground,
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "SOCKS5 relay configuration",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
-                },
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Text(
-                text = "Debugging",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
+                }
+            }
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Debug logging toggle
-            Row(
+            // Debugging Settings button
+            Card(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
+                onClick = onOpenDebuggingSettings,
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Debug logging",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onBackground,
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = "Log MQTT and camera stream details to Logcat",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Switch(
-                    checked = debugLogging,
-                    onCheckedChange = onDebugLoggingChanged,
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Redact logs toggle
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Redact logs",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onBackground,
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = "Redact sensitive data (passwords, IPs, serial numbers) when copying logs",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Switch(
-                    checked = redactLogs,
-                    onCheckedChange = onRedactLogsChanged,
-                )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "MQTT data",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onBackground,
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = "${mqttDataMessages.size} unique message structure(s) received",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                IconButton(onClick = { showMqttDataDialog = true }) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Article,
-                        contentDescription = "MQTT Data",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        imageVector = Icons.Filled.BugReport,
+                        contentDescription = null,
+                        modifier = Modifier.padding(end = 16.dp),
                     )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Logcat",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onBackground,
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = "Capture and view app logs",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                IconButton(onClick = {
-                    onCaptureLogcat()
-                    showLogcatDialog = true
-                }) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Article,
-                        contentDescription = "Logcat",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            }
-        }
-    }
-
-    if (showMqttDataDialog) {
-        val bodyText = if (mqttDataMessages.isEmpty()) {
-            "No messages received yet."
-        } else {
-            mqttDataMessages.joinToString("\n---\n")
-        }
-
-        AlertDialog(
-            onDismissRequest = { showMqttDataDialog = false },
-            title = { Text("${mqttDataMessages.size} unique message structure(s)") },
-            text = {
-                Text(
-                    text = bodyText,
-                    fontFamily = FontFamily.Monospace,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.verticalScroll(rememberScrollState()),
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    val text = if (redactLogs) {
-                        Regex(""""(sn|ams_id|subtask_name)"\s*:\s*"[^"]*"""")
-                            .replace(bodyText) { match ->
-                                "\"${match.groupValues[1]}\": \"REDACTED\""
-                            }
-                    } else {
-                        bodyText
+                    Column {
+                        Text(
+                            text = "Debugging",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onBackground,
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "Logging, MQTT data, and logcat viewer",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
-                    clipboardManager.setText(AnnotatedString(text))
-                }) {
-                    Text(if (redactLogs) "Copy Redacted" else "Copy")
                 }
-            },
-            dismissButton = {
-                TextButton(onClick = { showMqttDataDialog = false }) {
-                    Text("Close")
-                }
-            },
-        )
-    }
-
-    if (showLogcatDialog) {
-        val rawText = logcatText.ifEmpty { "No logs captured yet." }
-        val bodyText = if (redactLogs) {
-            redactLogText(rawText, accessCode, serialNumber)
-        } else {
-            rawText
+            }
         }
-
-        AlertDialog(
-            onDismissRequest = { showLogcatDialog = false },
-            title = { Text("Logcat") },
-            text = {
-                Text(
-                    text = bodyText,
-                    fontFamily = FontFamily.Monospace,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.verticalScroll(rememberScrollState()),
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    clipboardManager.setText(AnnotatedString(bodyText))
-                }) {
-                    Text(if (redactLogs) "Copy Redacted" else "Copy")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showLogcatDialog = false }) {
-                    Text("Close")
-                }
-            },
-        )
     }
 }

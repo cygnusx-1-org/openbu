@@ -44,6 +44,9 @@ import org.cygnusx1.openbu.ui.TimelapseScreen
 import org.cygnusx1.openbu.ui.PrinterSettingsScreen
 import org.cygnusx1.openbu.ui.RtspStreamScreen
 import org.cygnusx1.openbu.ui.SettingsScreen
+import org.cygnusx1.openbu.ui.GeneralSettingsScreen
+import org.cygnusx1.openbu.ui.RelaySettingsScreen
+import org.cygnusx1.openbu.ui.DebuggingSettingsScreen
 import org.cygnusx1.openbu.ui.SkipObjectsScreen
 import org.cygnusx1.openbu.ui.StreamScreen
 import org.cygnusx1.openbu.ui.VideoPlayerScreen
@@ -135,6 +138,9 @@ class MainActivity : ComponentActivity() {
                 var showRtspFullscreen by rememberSaveable { mutableStateOf(false) }
                 var showInternalRtspFullscreen by rememberSaveable { mutableStateOf(false) }
                 var showSettings by rememberSaveable { mutableStateOf(false) }
+                var showGeneralSettings by rememberSaveable { mutableStateOf(false) }
+                var showRelaySettings by rememberSaveable { mutableStateOf(false) }
+                var showDebuggingSettings by rememberSaveable { mutableStateOf(false) }
                 var showPrinterSettings by rememberSaveable { mutableStateOf(false) }
                 var showFileManager by rememberSaveable { mutableStateOf(false) }
                 var showTimelapse by rememberSaveable { mutableStateOf(false) }
@@ -390,15 +396,29 @@ class MainActivity : ComponentActivity() {
                     showSettings -> {
                         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
                         BackHandler { showSettings = false }
-                        val mqttDataMessages by viewModel.mqttDataMessages.collectAsState()
-                        val logcatText by viewModel.logcatText.collectAsState()
-                        val accessCode by viewModel.connectedAccessCode.collectAsState()
-                        val relayEnabled by viewModel.relayEnabled.collectAsState()
-                        val relayHost by viewModel.relayHost.collectAsState()
-                        val relayPort by viewModel.relayPort.collectAsState()
-                        val relayUsername by viewModel.relayUsername.collectAsState()
-                        val relayPassword by viewModel.relayPassword.collectAsState()
                         SettingsScreen(
+                            onOpenGeneralSettings = {
+                                showSettings = false
+                                showGeneralSettings = true
+                            },
+                            onOpenRelaySettings = {
+                                showSettings = false
+                                showRelaySettings = true
+                            },
+                            onOpenDebuggingSettings = {
+                                showSettings = false
+                                showDebuggingSettings = true
+                            },
+                            onBack = { showSettings = false },
+                        )
+                    }
+                    showGeneralSettings -> {
+                        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                        BackHandler {
+                            showGeneralSettings = false
+                            showSettings = true
+                        }
+                        GeneralSettingsScreen(
                             keepConnectionInBackground = keepConnectionInBackground,
                             onKeepConnectionChanged = { viewModel.setKeepConnectionInBackground(it) },
                             showMainStream = showMainStream,
@@ -407,6 +427,23 @@ class MainActivity : ComponentActivity() {
                             onAutoSavePrinterChanged = { viewModel.setAutoSavePrinter(it) },
                             forceDarkMode = forceDarkMode,
                             onForceDarkModeChanged = { viewModel.setForceDarkMode(it) },
+                            useVlcForRtsp = useVlcForRtsp,
+                            onUseVlcForRtspChanged = { viewModel.setUseVlcForRtsp(it) },
+                            onBack = {
+                                showGeneralSettings = false
+                                showSettings = true
+                            },
+                        )
+                    }
+                    showRelaySettings -> {
+                        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                        BackHandler { showRelaySettings = false }
+                        val relayEnabled by viewModel.relayEnabled.collectAsState()
+                        val relayHost by viewModel.relayHost.collectAsState()
+                        val relayPort by viewModel.relayPort.collectAsState()
+                        val relayUsername by viewModel.relayUsername.collectAsState()
+                        val relayPassword by viewModel.relayPassword.collectAsState()
+                        RelaySettingsScreen(
                             relayEnabled = relayEnabled,
                             onRelayEnabledChanged = { viewModel.setRelayEnabled(it) },
                             relayHost = relayHost,
@@ -417,8 +454,19 @@ class MainActivity : ComponentActivity() {
                             onRelayUsernameChanged = { viewModel.setRelayUsername(it) },
                             relayPassword = relayPassword,
                             onRelayPasswordChanged = { viewModel.setRelayPassword(it) },
-                            useVlcForRtsp = useVlcForRtsp,
-                            onUseVlcForRtspChanged = { viewModel.setUseVlcForRtsp(it) },
+                            onBack = {
+                                showRelaySettings = false
+                                showSettings = true
+                            },
+                        )
+                    }
+                    showDebuggingSettings -> {
+                        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                        BackHandler { showDebuggingSettings = false }
+                        val mqttDataMessages by viewModel.mqttDataMessages.collectAsState()
+                        val logcatText by viewModel.logcatText.collectAsState()
+                        val accessCode by viewModel.connectedAccessCode.collectAsState()
+                        DebuggingSettingsScreen(
                             debugLogging = debugLogging,
                             onDebugLoggingChanged = { viewModel.setDebugLogging(it) },
                             redactLogs = redactLogs,
@@ -427,8 +475,11 @@ class MainActivity : ComponentActivity() {
                             logcatText = logcatText,
                             accessCode = accessCode,
                             serialNumber = connectedSerialNumber,
-                            onCaptureLogcat = { viewModel.captureLogcat() },
-                            onBack = { showSettings = false },
+                            onCaptureLogcat = { filter -> viewModel.captureLogcat(filter) },
+                            onBack = {
+                                showDebuggingSettings = false
+                                showSettings = true
+                            },
                         )
                     }
                     connectionState == ConnectionState.Connected && showPrinterSettings -> {
@@ -499,6 +550,9 @@ class MainActivity : ComponentActivity() {
                             showRtspFullscreen = false
                             showInternalRtspFullscreen = false
                             showSettings = false
+                            showGeneralSettings = false
+                            showRelaySettings = false
+                            showDebuggingSettings = false
                             showPrinterSettings = false
                             showFileManager = false
                             showTimelapse = false
@@ -591,6 +645,9 @@ class MainActivity : ComponentActivity() {
                         showRtspFullscreen = false
                         showInternalRtspFullscreen = false
                         showSettings = false
+                        showGeneralSettings = false
+                        showRelaySettings = false
+                        showDebuggingSettings = false
                         showPrinterSettings = false
                         showFileManager = false
                         showTimelapse = false
