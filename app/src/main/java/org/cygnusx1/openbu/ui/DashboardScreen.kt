@@ -130,6 +130,7 @@ fun DashboardScreen(
     showMainStream: Boolean,
     internalRtspPlayer: ExoPlayer?,
     rtspPlayer: ExoPlayer?,
+    externalVlcContent: (@Composable (Modifier) -> Unit)? = null,
     isReconnecting: Boolean = false,
     mjpegCameraFailed: Boolean = false,
     noRouteToHost: String? = null,
@@ -525,7 +526,7 @@ fun DashboardScreen(
             Spacer(modifier = Modifier.height(VerticalCardPadding))
         }
 
-        // Internal RTSP stream (non-P1 printer built-in camera)
+        // Internal RTSP stream (non-P1 printer built-in camera) — always ExoPlayer
         if (showMainStream && internalRtspPlayer != null) {
             RtspStreamCard(player = internalRtspPlayer, onClick = onOpenInternalRtspFullscreen, isRelayed = isRelayed)
             Spacer(modifier = Modifier.height(VerticalCardPadding))
@@ -534,6 +535,11 @@ fun DashboardScreen(
         // External RTSP stream
         if (rtspPlayer != null) {
             RtspStreamCard(player = rtspPlayer, onClick = onOpenRtspFullscreen, isRelayed = isRelayed)
+        } else if (externalVlcContent != null) {
+            VlcRtspStreamCard(vlcContent = externalVlcContent, onClick = onOpenRtspFullscreen)
+            Spacer(modifier = Modifier.height(VerticalCardPadding))
+        } else if (rtspPlayer != null) {
+            RtspStreamCard(player = rtspPlayer, onClick = onOpenRtspFullscreen)
             Spacer(modifier = Modifier.height(VerticalCardPadding))
         }
 

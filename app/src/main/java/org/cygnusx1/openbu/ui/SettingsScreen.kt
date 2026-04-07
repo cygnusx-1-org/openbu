@@ -75,6 +75,8 @@ fun SettingsScreen(
     onRelayUsernameChanged: (String) -> Unit,
     relayPassword: String,
     onRelayPasswordChanged: (String) -> Unit,
+    useVlcForRtsp: Boolean,
+    onUseVlcForRtspChanged: (Boolean) -> Unit,
     debugLogging: Boolean,
     onDebugLoggingChanged: (Boolean) -> Unit,
     redactLogs: Boolean,
@@ -235,6 +237,32 @@ fun SettingsScreen(
                 Switch(
                     checked = forceDarkMode,
                     onCheckedChange = onForceDarkModeChanged,
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // VLC decoder toggle
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Use VLC decoder for RTSP",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onBackground,
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Software decoder for devices that can't play high-res streams",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(
+                    checked = useVlcForRtsp,
+                    onCheckedChange = onUseVlcForRtspChanged,
                 )
             }
 

@@ -82,6 +82,9 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
     private val _rtspUrl = MutableStateFlow("")
     val rtspUrl: StateFlow<String> = _rtspUrl.asStateFlow()
 
+    private val _useVlcForRtsp = MutableStateFlow(false)
+    val useVlcForRtsp: StateFlow<Boolean> = _useVlcForRtsp.asStateFlow()
+
     private val _forceDarkMode = MutableStateFlow(false)
     val forceDarkMode: StateFlow<Boolean> = _forceDarkMode.asStateFlow()
 
@@ -306,6 +309,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         _relayPort.value = prefs.getString("relay_port", "1080") ?: "1080"
         _relayUsername.value = prefs.getString("relay_username", "") ?: ""
         _relayPassword.value = prefs.getString("relay_password", "") ?: ""
+        _useVlcForRtsp.value = prefs.getBoolean("use_vlc_rtsp", false)
 
         // Migrate stale global RTSP keys
         if (prefs.contains("rtsp_enabled") || prefs.contains("rtsp_url")) {
@@ -359,6 +363,11 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         if (serial.isNotEmpty()) {
             prefs.edit().putString("rtsp_url_$serial", url).apply()
         }
+    }
+
+    fun setUseVlcForRtsp(enabled: Boolean) {
+        _useVlcForRtsp.value = enabled
+        prefs.edit().putBoolean("use_vlc_rtsp", enabled).apply()
     }
 
     fun setCustomPrinterName(name: String) {

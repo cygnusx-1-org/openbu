@@ -10,6 +10,9 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import android.util.Log
 import androidx.annotation.OptIn
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
 import androidx.compose.runtime.DisposableEffect
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.compose.runtime.collectAsState
@@ -44,6 +47,9 @@ import org.cygnusx1.openbu.ui.SettingsScreen
 import org.cygnusx1.openbu.ui.SkipObjectsScreen
 import org.cygnusx1.openbu.ui.StreamScreen
 import org.cygnusx1.openbu.ui.VideoPlayerScreen
+import org.cygnusx1.openbu.ui.VlcPlayerHolder
+import org.cygnusx1.openbu.ui.VlcRtspStreamScreen
+import org.cygnusx1.openbu.ui.rememberVlcContent
 import org.cygnusx1.openbu.ui.theme.OpenbuTheme
 import org.cygnusx1.openbu.viewmodel.BambuStreamViewModel
 import org.cygnusx1.openbu.viewmodel.ConnectionState
@@ -91,6 +97,7 @@ class MainActivity : ComponentActivity() {
                 viewModel.retryIfNeeded()
                 onPauseOrDispose {}
             }
+            var vlcResumeKey by remember { mutableStateOf(0) }
             val forceDarkMode by viewModel.forceDarkMode.collectAsState()
             val customBgColor by viewModel.customBgColor.collectAsState()
             val connectionState by viewModel.connectionState.collectAsState()
@@ -111,6 +118,7 @@ class MainActivity : ComponentActivity() {
                 val internalRtspUrl by viewModel.internalRtspUrl.collectAsState()
                 val rtspEnabled by viewModel.rtspEnabled.collectAsState()
                 val rtspUrl by viewModel.rtspUrl.collectAsState()
+                val useVlcForRtsp by viewModel.useVlcForRtsp.collectAsState()
                 val debugLogging by viewModel.debugLogging.collectAsState()
                 val redactLogs by viewModel.redactLogs.collectAsState()
                 val discoveredPrinters by viewModel.discoveredPrinters.collectAsState()
@@ -193,22 +201,67 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                // Internal RTSP player (non-P1 printer built-in camera)
+                // Internal RTSP player (non-P1 printer built-in camera) — always ExoPlayer
                 @OptIn(UnstableApi::class)
                 val internalRtspPlayer = remember(internalRtspUrl, rtspReconnectKey) {
-                    if (internalRtspUrl.isNotBlank()) createRtspPlayer(internalRtspUrl, "RTSP-Internal") else null
+                    if (internalRtspUrl.isNotBlank()) {
+                        Log.d("RTSP-Internal", "Using ExoPlayer decoder for: $internalRtspUrl")
+                        createRtspPlayer(internalRtspUrl, "RTSP-Internal")
+                    } else null
                 }
                 DisposableEffect(internalRtspUrl, rtspReconnectKey) {
                     onDispose { internalRtspPlayer?.release() }
                 }
 
                 // External RTSP player (user-configured secondary camera)
+                // VLC does not support SOCKS5 proxy tunneling, so disable when both VLC and relay are active
+                val shouldDisableExternalRtsp = useVlcForRtsp && currentProxyConfig != null
                 @OptIn(UnstableApi::class)
-                val rtspPlayer = remember(effectiveRtspUrl, rtspReconnectKey) {
-                    if (effectiveRtspUrl.isNotBlank()) createRtspPlayer(effectiveRtspUrl, "RTSP-External") else null
+                val rtspPlayer = remember(effectiveRtspUrl, rtspReconnectKey, useVlcForRtsp, shouldDisableExternalRtsp) {
+                    if (!shouldDisableExternalRtsp && !useVlcForRtsp && effectiveRtspUrl.isNotBlank()) {
+                        Log.d("RTSP-External", "Using ExoPlayer decoder for: $effectiveRtspUrl")
+                        createRtspPlayer(effectiveRtspUrl, "RTSP-External")
+                    } else null
                 }
-                DisposableEffect(effectiveRtspUrl, rtspReconnectKey) {
+                DisposableEffect(effectiveRtspUrl, rtspReconnectKey, useVlcForRtsp, shouldDisableExternalRtsp) {
                     onDispose { rtspPlayer?.release() }
+                }
+                val externalVlcPlayer = remember(effectiveRtspUrl, rtspReconnectKey, useVlcForRtsp, shouldDisableExternalRtsp) {
+                    if (!shouldDisableExternalRtsp && useVlcForRtsp && effectiveRtspUrl.isNotBlank()) {
+                        Log.d("RTSP-External", "Using VLC decoder for: $effectiveRtspUrl")
+                        VlcPlayerHolder(this@MainActivity, effectiveRtspUrl, "RTSP-External")
+                    } else null
+                }
+                DisposableEffect(effectiveRtspUrl, rtspReconnectKey, useVlcForRtsp, shouldDisableExternalRtsp) {
+                    onDispose { externalVlcPlayer?.release() }
+                }
+
+                // Card VLC content — stays alive permanently in the dashboard card
+                val externalVlcContent = rememberVlcContent(externalVlcPlayer)
+
+                // Fullscreen VLC player — separate instance created only when fullscreen is shown.
+                // The card player above is never touched during navigation, so it keeps playing
+                // on return without any surface swap or reconnection.
+                // VLC does not support SOCKS5 proxy tunneling, so disable when both VLC and relay are active
+                val fullscreenVlcPlayer = remember(effectiveRtspUrl, rtspReconnectKey, showRtspFullscreen, useVlcForRtsp, shouldDisableExternalRtsp) {
+                    if (!shouldDisableExternalRtsp && useVlcForRtsp && showRtspFullscreen && effectiveRtspUrl.isNotBlank()) {
+                        Log.d("RTSP-Fullscreen", "Using VLC decoder for fullscreen: $effectiveRtspUrl")
+                        VlcPlayerHolder(this@MainActivity, effectiveRtspUrl, "RTSP-Fullscreen")
+                    } else null
+                }
+                DisposableEffect(effectiveRtspUrl, rtspReconnectKey, showRtspFullscreen, useVlcForRtsp, shouldDisableExternalRtsp) {
+                    onDispose { fullscreenVlcPlayer?.release() }
+                }
+                val fullscreenVlcContent = rememberVlcContent(fullscreenVlcPlayer)
+
+                // Resume VLC players when returning from background
+                LifecycleResumeEffect(externalVlcPlayer, fullscreenVlcPlayer) {
+                    if (vlcResumeKey > 0) {
+                        externalVlcPlayer?.resume()
+                        fullscreenVlcPlayer?.resume()
+                    }
+                    vlcResumeKey++
+                    onPauseOrDispose {}
                 }
 
                 val fileList by viewModel.fileList.collectAsState()
@@ -364,6 +417,8 @@ class MainActivity : ComponentActivity() {
                             onRelayUsernameChanged = { viewModel.setRelayUsername(it) },
                             relayPassword = relayPassword,
                             onRelayPasswordChanged = { viewModel.setRelayPassword(it) },
+                            useVlcForRtsp = useVlcForRtsp,
+                            onUseVlcForRtspChanged = { viewModel.setUseVlcForRtsp(it) },
                             debugLogging = debugLogging,
                             onDebugLoggingChanged = { viewModel.setDebugLogging(it) },
                             redactLogs = redactLogs,
@@ -434,7 +489,11 @@ class MainActivity : ComponentActivity() {
                         if (connectionState == ConnectionState.Connected) {
                             window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                         }
-                        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                        // Orientation driven by fullscreen overlay state
+                        requestedOrientation = if (connectionState == ConnectionState.Connected && showRtspFullscreen && effectiveRtspUrl.isNotBlank())
+                            ActivityInfo.SCREEN_ORIENTATION_SENSOR
+                        else
+                            ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
                         BackHandler {
                             showFullscreen = false
                             showRtspFullscreen = false
@@ -458,6 +517,10 @@ class MainActivity : ComponentActivity() {
                                 ?: ""
                         }
                         val dashRelayEnabled by viewModel.relayEnabled.collectAsState()
+                        // Wrap in a Box so the fullscreen VLC overlay can sit above the dashboard
+                        // without unmounting it. DashboardScreen (and the card VLC view) stays
+                        // composed the whole time, keeping the card player's SurfaceView alive.
+                        Box(modifier = Modifier.fillMaxSize()) {
                         DashboardScreen(
                             frame = frame,
                             fps = fps,
@@ -469,6 +532,7 @@ class MainActivity : ComponentActivity() {
                             showMainStream = showMainStream,
                             internalRtspPlayer = internalRtspPlayer,
                             rtspPlayer = rtspPlayer,
+                            externalVlcContent = externalVlcContent,
                             isReconnecting = isReconnecting,
                             mjpegCameraFailed = mjpegCameraFailed,
                             noRouteToHost = noRouteToHost,
@@ -509,6 +573,16 @@ class MainActivity : ComponentActivity() {
                             onRelayEnabledChanged = { viewModel.setRelayEnabled(it) },
                             isRelayed = currentProxyConfig != null,
                         )
+                        // VLC fullscreen overlay — rendered on top of the dashboard so the
+                        // card player's SurfaceView is never detached from the window.
+                        if (connectionState == ConnectionState.Connected && showRtspFullscreen && effectiveRtspUrl.isNotBlank()) {
+                            BackHandler {
+                                showRtspFullscreen = false
+                            }
+                            if (fullscreenVlcContent != null) VlcRtspStreamScreen(vlcContent = fullscreenVlcContent)
+                            else RtspStreamScreen(player = rtspPlayer)
+                        }
+                        } // end Box
                     }
                     else -> {
                         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
