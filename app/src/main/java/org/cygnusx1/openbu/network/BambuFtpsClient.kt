@@ -58,62 +58,85 @@ class BambuFtpsClient(
     }
 
     suspend fun connect(): Unit = withContext(Dispatchers.IO) {
-        val rawSocket = if (rawSocketFactory != null) {
-            rawSocketFactory.invoke(ip, port)
-        } else {
-            Socket().apply { connect(InetSocketAddress(ip, port), 10_000) }
-        }
-        rawSocket.soTimeout = 30_000
-
-        Log.d(TAG, "Creating SSL socket to $ip:$port")
-        val ssl = sslContext.socketFactory.createSocket(rawSocket, ip, port, true) as SSLSocket
-        ssl.sslParameters = ssl.sslParameters.apply { endpointIdentificationAlgorithm = null }
-        // TLS 1.2: session IDs are available immediately after handshake.
-        // TLS 1.3 delivers session tickets in post-handshake messages that may not
-        // arrive before the data channel opens, leaving the session cache empty.
-        ssl.enabledProtocols = arrayOf("TLSv1.2")
-        Log.d(TAG, "Enabled protocols: ${ssl.enabledProtocols.joinToString()}")
-        Log.d(TAG, "Enabled cipher suites: ${ssl.enabledCipherSuites.joinToString()}")
-        Log.d(TAG, "Starting TLS handshake...")
-        ssl.startHandshake()
-        val session = ssl.session
-        Log.d(TAG, "TLS handshake complete: protocol=${session.protocol}, cipher=${session.cipherSuite}")
-
-        controlSocket = ssl
-        reader = BufferedReader(InputStreamReader(ssl.inputStream))
-        writer = ssl.outputStream
-
-        readResponse() // welcome banner
-
-        sendCommand("USER bblp")
-        val userResp = readResponse()
-        if (userResp.code == 331 || userResp.code == 230) {
-            if (userResp.code == 331) {
-                sendCommand("PASS $accessCode")
-                val passResp = readResponse()
-                if (passResp.code != 230) throw IOException("FTP login failed: ${passResp.text}")
+        Log.d(TAG, "connect() called, rawSocketFactory=${rawSocketFactory != null}")
+        try {
+            val rawSocket = if (rawSocketFactory != null) {
+                Log.d(TAG, "Using rawSocketFactory to create connection to $ip:$port")
+                rawSocketFactory.invoke(ip, port)
+            } else {
+                Log.d(TAG, "Using direct socket connection to $ip:$port")
+                val socket = Socket()
+                Log.d(TAG, "About to call connect() on raw socket...")
+                socket.connect(InetSocketAddress(ip, port), 10_000)
+                Log.d(TAG, "Raw socket connect() returned successfully")
+                socket
             }
-        } else {
-            throw IOException("FTP USER failed: ${userResp.text}")
-        }
+            Log.d(TAG, "Raw socket connected: localPort=${rawSocket.localPort}")
+            rawSocket.soTimeout = 30_000
 
-        // Enable TLS on data channels. Required even with implicit FTPS (port 990)
-        // because vsftpd only sets data_use_ssl via PROT P, not via implicit_ssl.
-        sendCommand("PBSZ 0")
-        readResponse()
-        sendCommand("PROT P")
-        val protResp = readResponse()
-        if (protResp.code == 200) {
-            dataUseSsl = true
-        } else {
-            Log.w(TAG, "PROT P not supported, falling back to PROT C (clear data channels)")
-            sendCommand("PROT C")
+            Log.d(TAG, "Creating SSL socket to $ip:$port")
+            val ssl = sslContext.socketFactory.createSocket(rawSocket, ip, port, true) as SSLSocket
+            ssl.sslParameters = ssl.sslParameters.apply { endpointIdentificationAlgorithm = null }
+            // TLS 1.2: session IDs are available immediately after handshake.
+            // TLS 1.3 delivers session tickets in post-handshake messages that may not
+            // arrive before the data channel opens, leaving the session cache empty.
+            ssl.enabledProtocols = arrayOf("TLSv1.2")
+            Log.d(TAG, "Enabled protocols: ${ssl.enabledProtocols.joinToString()}")
+            Log.d(TAG, "Enabled cipher suites: ${ssl.enabledCipherSuites.joinToString()}")
+            Log.d(TAG, "Starting TLS handshake...")
+            try {
+                ssl.startHandshake()
+                Log.d(TAG, "TLS handshake successful")
+            } catch (e: Exception) {
+                Log.e(TAG, "TLS handshake failed: ${e.message}", e)
+                throw e
+            }
+            val session = ssl.session
+            Log.d(TAG, "TLS handshake complete: protocol=${session.protocol}, cipher=${session.cipherSuite}")
+
+            controlSocket = ssl
+            reader = BufferedReader(InputStreamReader(ssl.inputStream))
+            writer = ssl.outputStream
+
+            Log.d(TAG, "Reading FTP welcome banner...")
+            readResponse() // welcome banner
+
+            sendCommand("USER bblp")
+            val userResp = readResponse()
+            Log.d(TAG, "USER response code: ${userResp.code}")
+            if (userResp.code == 331 || userResp.code == 230) {
+                if (userResp.code == 331) {
+                    Log.d(TAG, "Sending PASS command")
+                    sendCommand("PASS $accessCode")
+                    val passResp = readResponse()
+                    Log.d(TAG, "PASS response code: ${passResp.code}")
+                    if (passResp.code != 230) throw IOException("FTP login failed: ${passResp.text}")
+                }
+            } else {
+                throw IOException("FTP USER failed: ${userResp.text}")
+            }
+
+            // Enable TLS on data channels. Required even with implicit FTPS (port 990)
+            // because vsftpd only sets data_use_ssl via PROT P, not via implicit_ssl.
+            sendCommand("PBSZ 0")
             readResponse()
-            dataUseSsl = false
-        }
+            sendCommand("PROT P")
+            val protResp = readResponse()
+            if (protResp.code == 200) {
+                dataUseSsl = true
+            } else {
+                Log.w(TAG, "PROT P not supported, falling back to PROT C (clear data channels)")
+                sendCommand("PROT C")
+                readResponse()
+                dataUseSsl = false
+            }
 
-        sendCommand("TYPE I")
-        readResponse()
+            sendCommand("TYPE I")
+            readResponse()
+        } catch (e: Exception) {
+            Log.e(TAG, "connect() failed with exception: ${e.message}", e)
+            throw e
+        }
     }
 
     suspend fun listDirectory(path: String): List<FtpFileEntry> = withContext(Dispatchers.IO) {
@@ -288,23 +311,31 @@ class BambuFtpsClient(
     private fun openDataConnection(): Socket {
         sendCommand("PASV")
         val resp = readResponse()
+        Log.d(TAG, "PASV response: code=${resp.code}, text=${resp.text}")
         if (resp.code != 227) throw IOException("PASV failed: ${resp.text}")
 
         // Parse: 227 Entering Passive Mode (h1,h2,h3,h4,p1,p2)
         val match = Regex("\\((\\d+),(\\d+),(\\d+),(\\d+),(\\d+),(\\d+)\\)").find(resp.text)
-            ?: throw IOException("Cannot parse PASV response: ${resp.text}")
+        if (match == null) {
+            Log.e(TAG, "Cannot parse PASV response. Full response: ${resp.text}")
+            throw IOException("Cannot parse PASV response: ${resp.text}")
+        }
         val parts = match.groupValues.drop(1).map { it.toInt() }
+        Log.d(TAG, "PASV parsed parts: $parts")
         val dataHost = "${parts[0]}.${parts[1]}.${parts[2]}.${parts[3]}"
         val dataPort = parts[4] * 256 + parts[5]
+        Log.d(TAG, "PASV result: host=$dataHost, port=$dataPort (calculated from ${parts[4]}*256 + ${parts[5]})")
 
-        Log.d(TAG, "Data channel: connecting to $dataHost:$dataPort")
+        Log.d(TAG, "Data channel: connecting to $dataHost:$dataPort, rawSocketFactory=${rawSocketFactory != null}")
         val rawSocket = if (rawSocketFactory != null) {
+            Log.d(TAG, "Data channel: using rawSocketFactory")
             rawSocketFactory.invoke(dataHost, dataPort)
         } else {
+            Log.d(TAG, "Data channel: using direct socket")
             Socket().apply { connect(InetSocketAddress(dataHost, dataPort), 10_000) }
         }
         rawSocket.soTimeout = 30_000
-        Log.d(TAG, "Data channel: TCP connected")
+        Log.d(TAG, "Data channel: TCP connected, localPort=${rawSocket.localPort}")
         return rawSocket
     }
 

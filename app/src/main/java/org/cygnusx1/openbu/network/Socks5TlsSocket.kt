@@ -1,5 +1,6 @@
 package org.cygnusx1.openbu.network
 
+import android.util.Log
 import org.cygnusx1.openbu.data.ProxyConfig
 import java.io.IOException
 import java.net.InetAddress
@@ -18,6 +19,8 @@ import javax.net.ssl.X509TrustManager
  */
 object Socks5TlsSocket {
 
+    private const val TAG = "Socks5TlsSocket"
+
     private val trustAllManager = object : X509TrustManager {
         override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) {}
         override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {}
@@ -35,27 +38,34 @@ object Socks5TlsSocket {
         targetPort: Int,
         connectTimeoutMs: Int = 10_000,
     ): Socket {
+        Log.d(TAG, "connect() called: proxy=${proxy.host}:${proxy.port}, target=$targetHost:$targetPort")
         // 1. TLS connection to the GOST proxy
         val sslContext = SSLContext.getInstance("TLS")
         sslContext.init(null, arrayOf(trustAllManager), null)
+        Log.d(TAG, "Connecting to proxy ${proxy.host}:${proxy.port}...")
         val rawSocket = Socket()
         rawSocket.connect(InetSocketAddress(proxy.host, proxy.port), connectTimeoutMs)
+        Log.d(TAG, "Proxy TCP connected")
         val tlsSocket = sslContext.socketFactory.createSocket(
             rawSocket, proxy.host, proxy.port, true
         ) as SSLSocket
         tlsSocket.sslParameters = tlsSocket.sslParameters.apply {
             endpointIdentificationAlgorithm = null
         }
+        Log.d(TAG, "Starting proxy TLS handshake...")
         tlsSocket.startHandshake()
+        Log.d(TAG, "Proxy TLS handshake complete")
 
         val out = tlsSocket.outputStream
         val inp = tlsSocket.inputStream
 
         // 2. SOCKS5 greeting (RFC 1928): offer username/password auth (method 0x02)
+        Log.d(TAG, "Sending SOCKS5 greeting")
         out.write(byteArrayOf(0x05, 0x01, 0x02))
         out.flush()
 
         val greeting = readExactly(inp, 2)
+        Log.d(TAG, "Received SOCKS5 greeting response: version=${greeting[0]}, method=${greeting[1]}")
         if (greeting[0] != 0x05.toByte()) {
             throw IOException("Not a SOCKS5 proxy (version=${greeting[0]})")
         }
@@ -64,6 +74,7 @@ object Socks5TlsSocket {
         }
 
         // 3. Username/password sub-negotiation (RFC 1929)
+        Log.d(TAG, "Sending SOCKS5 authentication")
         val userBytes = proxy.username.toByteArray(Charsets.UTF_8)
         val passBytes = proxy.password.toByteArray(Charsets.UTF_8)
         val authPacket = ByteArray(3 + userBytes.size + passBytes.size)
@@ -76,6 +87,7 @@ object Socks5TlsSocket {
         out.flush()
 
         val authResp = readExactly(inp, 2)
+        Log.d(TAG, "Received SOCKS5 auth response: status=${authResp[1]}")
         if (authResp[1] != 0x00.toByte()) {
             throw IOException("SOCKS5 authentication failed (status=${authResp[1]})")
         }
@@ -83,6 +95,7 @@ object Socks5TlsSocket {
         // 4. CONNECT request — send domain names as-is (type 0x03) so the proxy
         //    resolves them, which handles internal DNS that the phone can't see.
         //    Only use IPv4/IPv6 address types for IP literals.
+        Log.d(TAG, "Sending SOCKS5 CONNECT request for $targetHost:$targetPort")
         val ipAddr = try { InetAddress.getByName(targetHost).takeIf {
             // Only treat as IP if the input was already an IP literal (no DNS lookup)
             targetHost == it.hostAddress
@@ -117,6 +130,7 @@ object Socks5TlsSocket {
         out.flush()
 
         // Read CONNECT response: 4 bytes header, then address (variable), then 2 bytes port
+        Log.d(TAG, "Reading SOCKS5 CONNECT response")
         val connHeader = readExactly(inp, 4)
         if (connHeader[1] != 0x00.toByte()) {
             val errorMsg = when (connHeader[1].toInt() and 0xFF) {
@@ -130,6 +144,7 @@ object Socks5TlsSocket {
                 8 -> "address type not supported"
                 else -> "unknown error ${connHeader[1]}"
             }
+            Log.e(TAG, "SOCKS5 CONNECT failed: $errorMsg")
             throw IOException("SOCKS5 CONNECT failed: $errorMsg")
         }
         // Consume the bound address + port from the response
@@ -142,6 +157,7 @@ object Socks5TlsSocket {
             }
         }
 
+        Log.d(TAG, "SOCKS5 tunnel established successfully")
         return tlsSocket // now tunneled to targetHost:targetPort
     }
 

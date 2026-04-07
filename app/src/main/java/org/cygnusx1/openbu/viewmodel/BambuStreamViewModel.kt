@@ -208,6 +208,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
     val connectedAccessCode: StateFlow<String> = _connectedAccessCode.asStateFlow()
 
     fun captureLogcat() {
+        _logcatText.value = ""
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val pid = android.os.Process.myPid()
