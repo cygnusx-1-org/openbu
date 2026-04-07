@@ -151,38 +151,52 @@ fun DebuggingSettingsScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // MQTT data viewer
-            Row(
+            // Data section
+            Text(
+                text = "Data",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // MQTT data button
+            Card(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
+                onClick = { showMqttDataDialog = true },
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "MQTT data",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onBackground,
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = "${mqttDataMessages.size} unique message structure(s) received",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                IconButton(onClick = { showMqttDataDialog = true }) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Article,
-                        contentDescription = "MQTT Data",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        imageVector = Icons.Filled.Cloud,
+                        contentDescription = null,
+                        modifier = Modifier.padding(end = 16.dp),
                     )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "MQTT data",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onBackground,
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "${mqttDataMessages.size} unique message structure(s) received",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            // All logs
+            // Logs section
             Text(
-                text = "Log Viewer",
+                text = "Logs",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onBackground,
             )
@@ -192,6 +206,7 @@ fun DebuggingSettingsScreen(
             // All logs button
             Card(
                 modifier = Modifier.fillMaxWidth(),
+                enabled = debugLogging,
                 onClick = {
                     onCaptureLogcat(null)
                     showLogcatDialog = true
@@ -208,18 +223,19 @@ fun DebuggingSettingsScreen(
                         imageVector = Icons.AutoMirrored.Filled.Article,
                         contentDescription = null,
                         modifier = Modifier.padding(end = 16.dp),
+                        tint = if (debugLogging) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                     )
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "All logs",
                             style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onBackground,
+                            color = if (debugLogging) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = "Capture and view all app logs",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = if (debugLogging) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                         )
                     }
                 }
@@ -230,6 +246,7 @@ fun DebuggingSettingsScreen(
             // Camera logs button
             Card(
                 modifier = Modifier.fillMaxWidth(),
+                enabled = debugLogging,
                 onClick = {
                     onCaptureLogcat("BambuCamera")
                     showLogcatDialog = true
@@ -246,18 +263,19 @@ fun DebuggingSettingsScreen(
                         imageVector = Icons.Filled.Videocam,
                         contentDescription = null,
                         modifier = Modifier.padding(end = 16.dp),
+                        tint = if (debugLogging) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                     )
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "Camera logs",
                             style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onBackground,
+                            color = if (debugLogging) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = "Filter: BambuCamera",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = if (debugLogging) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                         )
                     }
                 }
@@ -268,6 +286,7 @@ fun DebuggingSettingsScreen(
             // MQTT logs button
             Card(
                 modifier = Modifier.fillMaxWidth(),
+                enabled = debugLogging,
                 onClick = {
                     onCaptureLogcat("BambuMqtt")
                     showLogcatDialog = true
@@ -284,18 +303,19 @@ fun DebuggingSettingsScreen(
                         imageVector = Icons.Filled.Cloud,
                         contentDescription = null,
                         modifier = Modifier.padding(end = 16.dp),
+                        tint = if (debugLogging) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                     )
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "MQTT logs",
                             style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onBackground,
+                            color = if (debugLogging) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = "Filter: BambuMqtt",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = if (debugLogging) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                         )
                     }
                 }
@@ -306,6 +326,7 @@ fun DebuggingSettingsScreen(
             // FTPS logs button
             Card(
                 modifier = Modifier.fillMaxWidth(),
+                enabled = debugLogging,
                 onClick = {
                     onCaptureLogcat("BambuFtps")
                     showLogcatDialog = true
@@ -322,18 +343,19 @@ fun DebuggingSettingsScreen(
                         imageVector = Icons.Filled.Folder,
                         contentDescription = null,
                         modifier = Modifier.padding(end = 16.dp),
+                        tint = if (debugLogging) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                     )
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "FTPS logs",
                             style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onBackground,
+                            color = if (debugLogging) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = "Filter: BambuFtps",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = if (debugLogging) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                         )
                     }
                 }
