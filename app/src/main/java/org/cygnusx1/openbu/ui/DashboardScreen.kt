@@ -78,6 +78,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -382,15 +383,15 @@ fun DashboardScreen(
             }
         },
     ) {
+    Scaffold { innerPadding ->
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
+            .padding(innerPadding)
             .padding(horizontal = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Spacer(modifier = Modifier.height(48.dp))
-
         Box(modifier = Modifier.fillMaxWidth()) {
             IconButton(
                 onClick = { scope.launch { drawerState.open() } },
@@ -537,9 +538,6 @@ fun DashboardScreen(
             RtspStreamCard(player = rtspPlayer, onClick = onOpenRtspFullscreen, isRelayed = isRelayed)
         } else if (externalVlcContent != null) {
             VlcRtspStreamCard(vlcContent = externalVlcContent, onClick = onOpenRtspFullscreen)
-            Spacer(modifier = Modifier.height(VerticalCardPadding))
-        } else if (rtspPlayer != null) {
-            RtspStreamCard(player = rtspPlayer, onClick = onOpenRtspFullscreen)
             Spacer(modifier = Modifier.height(VerticalCardPadding))
         }
 
@@ -706,6 +704,7 @@ fun DashboardScreen(
         Spacer(modifier = Modifier.height(32.dp))
         } // scrollable Column
     }
+    } // Scaffold
     } // ModalNavigationDrawer
 }
 
