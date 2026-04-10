@@ -36,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
@@ -71,6 +72,7 @@ fun DebuggingSettingsScreen(
     onCaptureLogcat: (filter: String?) -> Unit,
     onBack: () -> Unit,
 ) {
+    val configuration = LocalConfiguration.current
     var showMqttDataDialog by remember { mutableStateOf(false) }
     var showLogcatDialog by remember { mutableStateOf(false) }
     var logDialogTitle by remember { mutableStateOf("Logs") }
@@ -79,7 +81,7 @@ fun DebuggingSettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Debugging Settings") },
+                title = { Text("Debug") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
@@ -99,6 +101,36 @@ fun DebuggingSettingsScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
         ) {
+            // Device properties section
+            Text(
+                text = "Device properties",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Density DPI",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onBackground,
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "${configuration.densityDpi} dpi",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             // Debug logging toggle
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -360,6 +392,7 @@ fun DebuggingSettingsScreen(
                     }
                 }
             }
+
         }
     }
 

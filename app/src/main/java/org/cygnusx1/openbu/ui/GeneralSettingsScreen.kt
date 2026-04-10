@@ -43,7 +43,7 @@ fun GeneralSettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("General Settings") },
+                title = { Text("General") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(

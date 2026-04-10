@@ -54,7 +54,7 @@ fun RelaySettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Remote Relay Settings") },
+                title = { Text("Remote Relay") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(

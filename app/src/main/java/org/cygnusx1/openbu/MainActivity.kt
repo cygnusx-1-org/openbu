@@ -437,7 +437,7 @@ class MainActivity : ComponentActivity() {
                     }
                     showRelaySettings -> {
                         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-                        BackHandler { showRelaySettings = false }
+                        BackHandler { showRelaySettings = false; showSettings = true }
                         val relayEnabled by viewModel.relayEnabled.collectAsState()
                         val relayHost by viewModel.relayHost.collectAsState()
                         val relayPort by viewModel.relayPort.collectAsState()
@@ -462,7 +462,7 @@ class MainActivity : ComponentActivity() {
                     }
                     showDebuggingSettings -> {
                         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-                        BackHandler { showDebuggingSettings = false }
+                        BackHandler { showDebuggingSettings = false; showSettings = true }
                         val mqttDataMessages by viewModel.mqttDataMessages.collectAsState()
                         val logcatText by viewModel.logcatText.collectAsState()
                         val accessCode by viewModel.connectedAccessCode.collectAsState()

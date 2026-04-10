@@ -115,7 +115,7 @@ fun SettingsScreen(
                     )
                     Column {
                         Text(
-                            text = "General Settings",
+                            text = "General",
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onBackground,
                         )
