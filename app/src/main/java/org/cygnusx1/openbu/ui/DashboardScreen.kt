@@ -114,8 +114,6 @@ import org.cygnusx1.openbu.network.AmsTray
 import org.cygnusx1.openbu.network.AmsUnit
 import org.cygnusx1.openbu.network.PrinterStatus
 
-var lowResolution by mutableStateOf(false)
-
 private val HorizontalCardPadding = 4.dp
 private val VerticalCardPadding = 4.dp
 
@@ -157,7 +155,6 @@ fun DashboardScreen(
     onRelayEnabledChanged: (Boolean) -> Unit = {},
     isRelayed: Boolean = false,
 ) {
-    lowResolution = LocalConfiguration.current.densityDpi >= 420
     val series = printerSeriesFromSerial(serialNumber)
     val isEnclosed = series.isEnclosed
     var showSpeedDialog by remember { mutableStateOf(false) }
@@ -1363,6 +1360,7 @@ private fun TemperatureDialog(
     onDismiss: () -> Unit,
     onConfirm: (Int) -> Unit,
 ) {
+    val horizontalPadding = (LocalConfiguration.current.screenWidthDp * 0.12f).dp
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("temp_presets", android.content.Context.MODE_PRIVATE) }
     var targetTemp by remember { mutableIntStateOf(currentTemp) }
@@ -1394,7 +1392,7 @@ private fun TemperatureDialog(
                     Text(
                         text = "$targetTemp °C",
                         style = MaterialTheme.typography.headlineMedium,
-                        modifier = Modifier.padding(horizontal = if (lowResolution) 48.dp else 96.dp),
+                        modifier = Modifier.padding(horizontal = horizontalPadding),
                     )
                     RepeatingIconButton(onClick = { targetTemp = (targetTemp + 1).coerceAtMost(maxTemp) }) {
                         Text("+", style = MaterialTheme.typography.headlineMedium)
@@ -1468,6 +1466,7 @@ private fun FanSpeedDialog(
     onDismiss: () -> Unit,
     onConfirm: (Int) -> Unit,
 ) {
+    val horizontalPadding = (LocalConfiguration.current.screenWidthDp * 0.12f).dp
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("temp_presets", android.content.Context.MODE_PRIVATE) }
     val initialPercent = kotlin.math.round(currentSpeedPwm * 100f / 255f).toInt()
@@ -1500,7 +1499,7 @@ private fun FanSpeedDialog(
                     Text(
                         text = "$targetSpeed%",
                         style = MaterialTheme.typography.headlineMedium,
-                        modifier = Modifier.padding(horizontal = if (lowResolution) 48.dp else 96.dp),
+                        modifier = Modifier.padding(horizontal = horizontalPadding),
                     )
                     RepeatingIconButton(onClick = { targetSpeed = (targetSpeed + 10).coerceAtMost(100) }) {
                         Text("+", style = MaterialTheme.typography.headlineMedium)
