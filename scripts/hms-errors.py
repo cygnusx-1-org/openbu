@@ -1,4 +1,14 @@
-import re, json
+#!/usr/bin/python
+
+import re, json, subprocess
+
+result = subprocess.run(
+    ['wget', 'https://wiki.bambulab.com/en/hms/home', '-O', 'hms.html', '-o', '/dev/null']
+)
+
+if result.returncode != 0:
+    print("HMS data error")
+    exit(1)
 
 with open('hms.html', 'r', encoding='utf-8') as f:
     html = f.read()
