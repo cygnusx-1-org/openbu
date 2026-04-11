@@ -664,6 +664,9 @@ class MainActivity : ComponentActivity() {
                             onConnect = { ip, accessCode, serialNumber, savePrinter ->
                                 viewModel.connect(ip, accessCode, serialNumber, savePrinter)
                             },
+                            onDeletePrinter = { serial ->
+                                viewModel.deleteSavedPrinter(serial)
+                            },
                         )
                     }
                 }

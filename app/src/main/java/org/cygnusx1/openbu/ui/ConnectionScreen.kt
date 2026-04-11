@@ -5,6 +5,8 @@ import org.cygnusx1.openbu.data.printerSeriesFromSerial
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -27,8 +29,10 @@ import androidx.compose.material.icons.filled.Print
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -70,6 +74,7 @@ fun ConnectionScreen(
     onStopDiscovery: () -> Unit,
     onGetSavedAccessCode: (serialNumber: String) -> String,
     onConnect: (ip: String, accessCode: String, serialNumber: String, savePrinter: Boolean) -> Unit,
+    onDeletePrinter: (serialNumber: String) -> Unit = {},
 ) {
     var ip by rememberSaveable { mutableStateOf("") }
     var accessCode by rememberSaveable { mutableStateOf("") }
@@ -78,6 +83,7 @@ fun ConnectionScreen(
     var savePrinter by rememberSaveable { mutableStateOf(savePrinterDefault) }
     var manualMode by rememberSaveable { mutableStateOf(false) }
     var selectedSerial by rememberSaveable { mutableStateOf<String?>(null) }
+    var printerToDelete by rememberSaveable { mutableStateOf<String?>(null) }
     val isConnecting = connectionState == ConnectionState.Connecting
 
     val textFieldColors = OutlinedTextFieldDefaults.colors()
@@ -99,6 +105,26 @@ fun ConnectionScreen(
     DisposableEffect(Unit) {
         onStartDiscovery()
         onDispose { onStopDiscovery() }
+    }
+
+    printerToDelete?.let { serial ->
+        val name = savedPrinters.firstOrNull { it.serialNumber == serial }
+            ?.deviceName?.ifBlank { null } ?: "this printer"
+        AlertDialog(
+            onDismissRequest = { printerToDelete = null },
+            title = { Text("Delete printer?") },
+            text = { Text("Remove $name from saved printers?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    onDeletePrinter(serial)
+                    if (selectedSerial == serial) selectedSerial = null
+                    printerToDelete = null
+                }) { Text("Delete") }
+            },
+            dismissButton = {
+                TextButton(onClick = { printerToDelete = null }) { Text("Cancel") }
+            },
+        )
     }
 
     Column(
@@ -276,6 +302,7 @@ fun ConnectionScreen(
                                     accessCode = printer.accessCode
                                     accessCodeVisible = false
                                 },
+                                onLongClick = { printerToDelete = printer.serialNumber },
                             )
                         }
                     }
@@ -415,6 +442,7 @@ fun ConnectionScreen(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun PrinterCard(
     name: String,
@@ -423,11 +451,16 @@ private fun PrinterCard(
     isSelected: Boolean,
     enabled: Boolean,
     onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(enabled = enabled, onClick = onClick)
+            .combinedClickable(
+                enabled = enabled,
+                onClick = onClick,
+                onLongClick = onLongClick,
+            )
             .then(
                 if (isSelected) Modifier.border(
                     2.dp,

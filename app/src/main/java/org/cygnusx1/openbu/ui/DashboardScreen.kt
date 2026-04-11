@@ -1,6 +1,8 @@
 package org.cygnusx1.openbu.ui
 
+import android.content.Intent
 import android.graphics.Bitmap
+import android.net.Uri
 import android.util.Log
 import java.util.Calendar
 import java.text.SimpleDateFormat
@@ -13,6 +15,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -112,6 +115,8 @@ import org.cygnusx1.openbu.R
 import org.cygnusx1.openbu.data.FilamentProfile
 import org.cygnusx1.openbu.network.AmsTray
 import org.cygnusx1.openbu.network.AmsUnit
+import org.cygnusx1.openbu.data.HmsLookup
+import org.cygnusx1.openbu.data.HmsWikiResult
 import org.cygnusx1.openbu.network.PrinterStatus
 
 private val HorizontalCardPadding = 4.dp
@@ -155,9 +160,11 @@ fun DashboardScreen(
     onRelayEnabledChanged: (Boolean) -> Unit = {},
     isRelayed: Boolean = false,
 ) {
+    val context = LocalContext.current
     val series = printerSeriesFromSerial(serialNumber)
     val isEnclosed = series.isEnclosed
     var showSpeedDialog by remember { mutableStateOf(false) }
+    var showHmsDialog by remember { mutableStateOf(false) }
     var showNozzleDialog by remember { mutableStateOf(false) }
     var showBedDialog by remember { mutableStateOf(false) }
     var showPartFanDialog by remember { mutableStateOf(false) }
@@ -254,6 +261,51 @@ fun DashboardScreen(
                 Log.d("FanControl", "Chamber fan confirm: percent=$percent -> pwm=$pwm (fan=3)")
                 onSetFanSpeed(3, pwm)
                 showChamberFanDialog = false
+            },
+        )
+    }
+
+    if (showHmsDialog) {
+        AlertDialog(
+            onDismissRequest = { showHmsDialog = false },
+            title = { Text("HMS Errors") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    printerStatus.hmsErrors.forEach { err ->
+                        val result = HmsLookup.resolve(context, err.hmsCode, series)
+                        Column {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = err.hmsCode,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.error,
+                                )
+                                if (result is HmsWikiResult.NoMatch && result.availablePaths.isNotEmpty()) {
+                                    Text(
+                                        text = " [${result.availablePaths.joinToString(", ")}]",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                            if (result is HmsWikiResult.Match) {
+                                TextButton(
+                                    onClick = {
+                                        val intent = Intent(Intent.ACTION_VIEW,
+                                            Uri.parse(result.url))
+                                        context.startActivity(intent)
+                                    },
+                                    contentPadding = PaddingValues(0.dp),
+                                ) {
+                                    Text("View on Bambu Wiki")
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showHmsDialog = false }) { Text("Close") }
             },
         )
     }
@@ -443,15 +495,26 @@ fun DashboardScreen(
                     )
                 }
             }
-            IconButton(
-                onClick = { showSpeedDialog = true },
+            Row(
                 modifier = Modifier.align(Alignment.CenterEnd),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(
-                    imageVector = Icons.Filled.Speed,
-                    contentDescription = "Print Speed",
-                    tint = MaterialTheme.colorScheme.onBackground,
-                )
+                if (printerStatus.hmsErrors.isNotEmpty()) {
+                    TextButton(onClick = { showHmsDialog = true }) {
+                        Text(
+                            text = "HMS error(s)",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.labelSmall,
+                        )
+                    }
+                }
+                IconButton(onClick = { showSpeedDialog = true }) {
+                    Icon(
+                        imageVector = Icons.Filled.Speed,
+                        contentDescription = "Print Speed",
+                        tint = MaterialTheme.colorScheme.onBackground,
+                    )
+                }
             }
         }
 

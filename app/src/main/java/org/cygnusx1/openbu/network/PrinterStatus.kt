@@ -15,6 +15,13 @@ data class AmsUnit(
     val trays: List<AmsTray> = emptyList(),
 )
 
+data class HmsError(val attr: Long, val code: Long) {
+    val hmsCode: String get() = "%04X_%04X_%04X_%04X".format(
+        attr ushr 16, attr and 0xFFFF,
+        code ushr 16, code and 0xFFFF
+    )
+}
+
 data class PrinterStatus(
     val gcodeState: String = "IDLE",
     val gcodeFile: String = "",
@@ -35,6 +42,7 @@ data class PrinterStatus(
     val vtTray: AmsTray? = null,
     val spdLvl: Int = 2, // 2 = Normal = 100%
     val skippedObjects: List<Int> = emptyList(), // from s_obj
+    val hmsErrors: List<HmsError> = emptyList(),
 )
 
 data class SavedPrinter(

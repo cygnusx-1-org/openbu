@@ -649,6 +649,19 @@ class BambuMqttClient(
             } else current.skippedObjects
         } else current.skippedObjects
 
+        val hmsErrors = if (print.has("hms")) {
+            val arr = print.optJSONArray("hms")
+            if (arr != null) {
+                (0 until arr.length()).mapNotNull { i ->
+                    val obj = arr.optJSONObject(i) ?: return@mapNotNull null
+                    HmsError(
+                        attr = obj.optLong("attr"),
+                        code = obj.optLong("code"),
+                    )
+                }
+            } else current.hmsErrors
+        } else current.hmsErrors
+
         val newStatus = PrinterStatus(
             gcodeState = gcodeState,
             gcodeFile = gcodeFile,
@@ -669,6 +682,7 @@ class BambuMqttClient(
             vtTray = vtTray,
             spdLvl = spdLvl,
             skippedObjects = skippedObjects,
+            hmsErrors = hmsErrors,
         )
         _printerStatus.value = newStatus
 
