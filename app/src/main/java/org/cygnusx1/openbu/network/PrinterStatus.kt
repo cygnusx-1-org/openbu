@@ -5,7 +5,14 @@ data class AmsTray(
     val trayType: String = "",
     val trayColor: String = "",
     val trayInfoIdx: String = "",
-)
+    val remainPercent: Int = -1,
+    val trayWeight: Int = 0,
+) {
+    val remainGrams: Int?
+        get() = if (remainPercent in 0..100 && trayWeight > 0)
+            remainPercent * trayWeight / 100
+        else null
+}
 
 data class AmsUnit(
     val id: String = "",

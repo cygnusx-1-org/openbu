@@ -462,15 +462,29 @@ class BambuMqttClient(
         for (i in 0 until modules.length()) {
             val module = modules.getJSONObject(i)
             val name = module.optString("name", "")
-            val productName = module.optString("product_name", "")
-            if (productName.isEmpty()) continue
-            // name is like "ams/2", "n3f/0", "n3s/128" — extract id after "/"
+            // name is like "ams/2", "n3f/0", "n3s/128" — extract prefix and id around "/"
             val slashIndex = name.indexOf('/')
             if (slashIndex < 0) continue
+            val prefix = name.substring(0, slashIndex)
             val amsId = name.substring(slashIndex + 1)
-            amsModelMap[amsId] = productName
+            val productName = module.optString("product_name", "")
+            val displayName = if (productName.isNotEmpty()) {
+                productName
+            } else {
+                // Fallback for printers (e.g. X1C) that omit product_name in get_version.
+                // Map prefix -> friendly base, then append 1-based slot number.
+                val base = when (prefix) {
+                    "ams" -> "AMS"
+                    "n3f" -> "AMS 2 Pro"
+                    "n3s" -> "AMS HT"
+                    else -> continue
+                }
+                val idNum = amsId.toIntOrNull()
+                if (idNum != null) "$base ${idNum + 1}" else base
+            }
+            amsModelMap[amsId] = displayName
             changed = true
-            if (debugLogging) Log.d(TAG, "AMS model: id=$amsId -> $productName")
+            if (debugLogging) Log.d(TAG, "AMS model: id=$amsId -> $displayName")
         }
         // Re-apply models to existing AMS units (version response may arrive after pushall)
         if (changed) {
@@ -593,6 +607,8 @@ class BambuMqttClient(
                     trayType = trayType,
                     trayColor = trayColor,
                     trayInfoIdx = trayInfoIdx,
+                    remainPercent = vtTrayObj.optInt("remain", -1),
+                    trayWeight = vtTrayObj.optString("tray_weight", "0").toIntOrNull() ?: 0,
                 )
             } else {
                 null
@@ -616,6 +632,8 @@ class BambuMqttClient(
                                 trayType = trayObj.optString("tray_type", ""),
                                 trayColor = trayObj.optString("tray_color", ""),
                                 trayInfoIdx = trayObj.optString("tray_info_idx", ""),
+                                remainPercent = trayObj.optInt("remain", -1),
+                                trayWeight = trayObj.optString("tray_weight", "0").toIntOrNull() ?: 0,
                             ))
                         }
                     }
@@ -625,7 +643,16 @@ class BambuMqttClient(
                         id = amsId,
                         model = amsModel,
                         temp = amsObj.optString("temp", ""),
-                        humidity = amsObj.optString("humidity_raw", ""),
+                        humidity = run {
+                            val raw = amsObj.optString("humidity_raw", "")
+                            if (raw.isNotEmpty()) {
+                                raw
+                            } else {
+                                // X1C reports a 1-5 level: 5=10%, 4=20%, 3=30%, 2=40%, 1=50%
+                                val level = amsObj.optString("humidity", "").toIntOrNull()
+                                if (level != null && level in 1..5) ((6 - level) * 10).toString() else ""
+                            }
+                        },
                         trays = trays,
                     ))
                 }

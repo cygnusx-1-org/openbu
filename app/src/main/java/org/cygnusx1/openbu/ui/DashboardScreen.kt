@@ -1052,12 +1052,25 @@ private fun FilamentSlot(tray: AmsTray, onClick: () -> Unit = {}) {
                     )
                 }
             } else {
+                val bgColor = parseHexColor(tray.trayColor)
+                val grams = tray.remainGrams
                 Box(
                     modifier = Modifier
                         .size(32.dp)
                         .clip(CircleShape)
-                        .background(parseHexColor(tray.trayColor)),
-                )
+                        .background(bgColor),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (grams != null) {
+                        Text(
+                            text = "${grams}g",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = contrastTextColor(bgColor),
+                            maxLines = 1,
+                        )
+                    }
+                }
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = tray.trayType,
@@ -1697,4 +1710,9 @@ private fun parseHexColor(hex: String): Color {
     } catch (_: Exception) {
         Color.Gray
     }
+}
+
+private fun contrastTextColor(bg: Color): Color {
+    val luminance = 0.299f * bg.red + 0.587f * bg.green + 0.114f * bg.blue
+    return if (luminance > 0.55f) Color.Black else Color.White
 }
