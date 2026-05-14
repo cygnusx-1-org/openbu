@@ -1,0 +1,113 @@
+Privacy Policy for Openbu
+
+Last updated: 2026-05-13
+
+Openbu ("the app") is an open source Android application that lets you
+monitor and control Bambu Lab 3D printers running in Developer Mode /
+LAN-only mode. This document explains what data the app handles and
+how.
+
+The short version: Openbu does not collect, transmit, sell, or share
+any personal information. All communication happens directly between
+your device and your printer (or a relay you choose to run).
+
+
+WHO RUNS OPENBU
+
+Openbu is developed and maintained by the project's open source
+contributors. The source code is available at:
+
+    https://github.com/cygnusx-1-org/openbu
+
+For privacy questions, please open an issue at:
+
+    https://github.com/cygnusx-1-org/openbu/issues
+
+
+WHAT DATA THE APP HANDLES
+
+Data you provide
+
+To connect to a printer you provide:
+
+  - Printer IP address (often auto-detected on your local network)
+  - Printer serial number (often auto-detected on your local network)
+  - LAN access code
+  - Optional RTSP URLs for external camera streams
+  - Optional filament type and color assignments per AMS tray and the
+    external spool
+
+This information is stored only on your device, in the app's private
+storage. It is used solely to connect to the printer you configured.
+It is not transmitted to the developer or to any third party.
+
+Data the app reads from your printer
+
+While connected, the app reads operational data published by the
+printer over MQTT, FTPS, and the camera stream -- for example: nozzle
+and bed temperatures, fan speeds, AMS state, print job progress, HMS
+error codes, and the camera image. This data stays on your device. It
+is displayed to you and is not sent anywhere else by the app.
+
+Data the app does NOT collect
+
+Openbu does not include analytics, advertising, crash reporting SDKs,
+tracking, fingerprinting, or any other telemetry. The app does not
+create user accounts and does not require sign-in. The developer
+receives no information about you, your printer, or your usage of the
+app.
+
+
+NETWORK COMMUNICATION
+
+The app communicates over the network only with destinations you
+configure or that it discovers on your local network:
+
+  - Your Bambu Lab printer over MQTT (TLS, port 8883), the MJPEG
+    camera stream (port 6000), FTPS for file management, and/or RTSP
+    for models that expose an RTSP stream.
+  - mDNS / multicast on your local network in order to auto-detect
+    printers.
+  - An RTSP server if you have added an external RTSP URL.
+  - An openbu-relay instance if you have configured remote access.
+    openbu-relay is self-hosted software -- when you use it, you (or
+    whoever operates that relay) control where the traffic goes. The
+    Openbu project does not operate any relay or backend service on
+    your behalf.
+
+The app does not contact the developer's servers, Bambu Lab's cloud,
+or any analytics or advertising services.
+
+
+ANDROID PERMISSIONS
+
+The app requests the following permissions, all for the functionality
+described above:
+
+  - INTERNET -- to communicate with the printer (and your relay, if
+    configured).
+  - ACCESS_WIFI_STATE and CHANGE_WIFI_MULTICAST_STATE -- to discover
+    printers on the local network via mDNS.
+
+The app does not request access to your contacts, location, photos,
+microphone, call logs, SMS, or other sensitive data.
+
+
+CHILDREN'S PRIVACY
+
+The app is not directed at children and does not knowingly collect any
+information from anyone, including children.
+
+
+CHANGES TO THIS POLICY
+
+If this policy changes, the updated version will be committed to the
+project's Git repository alongside the source code. The "Last updated"
+date at the top of this document will be revised.
+
+
+CONTACT
+
+Questions or concerns can be raised by opening an issue at:
+
+    https://github.com/cygnusx-1-org/openbu/issues

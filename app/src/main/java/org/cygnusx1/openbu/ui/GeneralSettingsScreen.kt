@@ -28,8 +28,6 @@ import androidx.compose.ui.unit.dp
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GeneralSettingsScreen(
-    keepConnectionInBackground: Boolean,
-    onKeepConnectionChanged: (Boolean) -> Unit,
     showMainStream: Boolean,
     onShowMainStreamChanged: (Boolean) -> Unit,
     autoSavePrinter: Boolean,
@@ -63,32 +61,6 @@ fun GeneralSettingsScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
         ) {
-            // Persistent connection
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Persistent connection",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onBackground,
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = "Maintain printer connection when the app is in the background",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Switch(
-                    checked = keepConnectionInBackground,
-                    onCheckedChange = onKeepConnectionChanged,
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
             // Internal stream toggle
             Row(
                 modifier = Modifier.fillMaxWidth(),

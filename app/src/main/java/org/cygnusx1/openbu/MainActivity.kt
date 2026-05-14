@@ -115,7 +115,6 @@ class MainActivity : ComponentActivity() {
                 val isLightOn by viewModel.isLightOn.collectAsState()
                 val isMqttConnected by viewModel.isMqttConnected.collectAsState()
                 val printerStatus by viewModel.printerStatus.collectAsState()
-                val keepConnectionInBackground by viewModel.keepConnectionInBackground.collectAsState()
                 val showMainStream by viewModel.showMainStream.collectAsState()
                 val autoSavePrinter by viewModel.autoSavePrinter.collectAsState()
                 val internalRtspUrl by viewModel.internalRtspUrl.collectAsState()
@@ -419,8 +418,6 @@ class MainActivity : ComponentActivity() {
                             showSettings = true
                         }
                         GeneralSettingsScreen(
-                            keepConnectionInBackground = keepConnectionInBackground,
-                            onKeepConnectionChanged = { viewModel.setKeepConnectionInBackground(it) },
                             showMainStream = showMainStream,
                             onShowMainStreamChanged = { viewModel.setShowMainStream(it) },
                             autoSavePrinter = autoSavePrinter,

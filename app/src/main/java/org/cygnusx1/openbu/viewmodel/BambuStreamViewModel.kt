@@ -1,7 +1,6 @@
 package org.cygnusx1.openbu.viewmodel
 
 import android.app.Application
-import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Environment
@@ -23,7 +22,6 @@ import org.cygnusx1.openbu.network.PrintableObject
 import org.cygnusx1.openbu.network.PrinterStatus
 import org.cygnusx1.openbu.network.SavedPrinter
 import org.cygnusx1.openbu.network.ThreeMfParser
-import org.cygnusx1.openbu.service.ConnectionForegroundService
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -66,9 +64,6 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
 
     private val _printerStatus = MutableStateFlow(PrinterStatus())
     val printerStatus: StateFlow<PrinterStatus> = _printerStatus.asStateFlow()
-
-    private val _keepConnectionInBackground = MutableStateFlow(true)
-    val keepConnectionInBackground: StateFlow<Boolean> = _keepConnectionInBackground.asStateFlow()
 
     private val _showMainStream = MutableStateFlow(true)
     val showMainStream: StateFlow<Boolean> = _showMainStream.asStateFlow()
@@ -303,7 +298,6 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         prefs.getString("access_code_$serialNumber", "") ?: ""
 
     init {
-        _keepConnectionInBackground.value = prefs.getBoolean("keep_connection_bg", true)
         _showMainStream.value = prefs.getBoolean("show_main_stream", true)
         _forceDarkMode.value = prefs.getBoolean("force_dark_mode", false)
         _debugLogging.value = prefs.getBoolean("debug_logging", false)
@@ -335,17 +329,6 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
             _connectedSerialNumber.value = lastSerial
             loadPerPrinterSettings(lastSerial)
             connect(lastIp, lastAccessCode, lastSerial)
-        }
-    }
-
-    fun setKeepConnectionInBackground(enabled: Boolean) {
-        _keepConnectionInBackground.value = enabled
-        prefs.edit().putBoolean("keep_connection_bg", enabled).apply()
-        val app = getApplication<Application>()
-        if (enabled && _connectionState.value == ConnectionState.Connected) {
-            app.startForegroundService(Intent(app, ConnectionForegroundService::class.java))
-        } else if (!enabled) {
-            app.stopService(Intent(app, ConnectionForegroundService::class.java))
         }
     }
 
@@ -547,10 +530,6 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
                             _mjpegCameraFailed.value = false
                             _noRouteToHost.value = null
                             reconnectRetryCount = 0
-                            if (_keepConnectionInBackground.value) {
-                                val app = getApplication<Application>()
-                                app.startForegroundService(Intent(app, ConnectionForegroundService::class.java))
-                            }
                             if (pendingSavePrinter) {
                                 pendingSavePrinter = false
                                 saveCurrentPrinter()
@@ -616,10 +595,6 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
                         _isReconnecting.value = false
                         _noRouteToHost.value = null
                         reconnectRetryCount = 0
-                        if (_keepConnectionInBackground.value) {
-                            val app = getApplication<Application>()
-                            app.startForegroundService(Intent(app, ConnectionForegroundService::class.java))
-                        }
                         if (pendingSavePrinter) {
                             pendingSavePrinter = false
                             saveCurrentPrinter()
@@ -917,10 +892,6 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
                             _connectionState.value = ConnectionState.Connected
                             _hasLastConnectedPrinter.value = true
                             reconnectRetryCount = 0
-                            if (_keepConnectionInBackground.value) {
-                                val app = getApplication<Application>()
-                                app.startForegroundService(Intent(app, ConnectionForegroundService::class.java))
-                            }
                             if (pendingSavePrinter) {
                                 pendingSavePrinter = false
                                 saveCurrentPrinter()
@@ -1017,11 +988,6 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
-    private fun stopForegroundService() {
-        val app = getApplication<Application>()
-        app.stopService(Intent(app, ConnectionForegroundService::class.java))
-    }
-
     fun disconnect() {
         Log.d("AutoReconnect", "disconnect() called")
         userDisconnected = true
@@ -1032,7 +998,6 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         _isReconnecting.value = false
         reconnectRetryCount = 0
         fullCleanup()
-        stopForegroundService()
         _errorMessage.value = null
         _connectionState.value = ConnectionState.Disconnected
         // Clear last-connected so we don't auto-reconnect next launch
@@ -1569,7 +1534,6 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         closeTimelapse()
         // Clean up connections but preserve last_connected prefs for auto-reconnect on next launch
         cleanupConnections()
-        stopForegroundService()
     }
 
     private fun setNoRouteToHost(ip: String) {
