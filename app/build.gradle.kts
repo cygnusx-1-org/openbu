@@ -20,10 +20,9 @@ android {
     defaultConfig {
         applicationId = "org.cygnusx1.openbu"
         minSdk = 26
-        ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
         targetSdk = 35
         versionCode = 1
-        versionName = "1.0.25"
+        versionName = "1.0.26"
     }
 
     signingConfigs {
@@ -33,13 +32,28 @@ android {
             storeFile = file(keystoreProperties["storeFile"] as String)
             storePassword = keystoreProperties["storePassword"] as String
         }
+        create("upload") {
+            (keystoreProperties["uploadKeyAlias"] as String?)?.let { keyAlias = it }
+            (keystoreProperties["uploadKeyPassword"] as String?)?.let { keyPassword = it }
+            (keystoreProperties["uploadStoreFile"] as String?)?.let { storeFile = file(it) }
+            (keystoreProperties["uploadStorePassword"] as String?)?.let { storePassword = it }
+        }
+    }
+
+    flavorDimensions += "distribution"
+    productFlavors {
+        create("direct") {
+            dimension = "distribution"
+            ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
+            signingConfig = signingConfigs.getByName("release")
+        }
+        create("play") {
+            dimension = "distribution"
+            signingConfig = signingConfigs.getByName("upload")
+        }
     }
 
     buildTypes {
-        getByName("release") {
-            signingConfig = signingConfigs.getByName("release")
-        }
-
         release {
             isMinifyEnabled = false
             proguardFiles(
@@ -78,10 +92,11 @@ tasks.register("renameApks") {
             .filter { it.extension == "apk" }
             .forEach { apk ->
                 val buildTypeName = apk.parentFile.name
+                val flavorName = apk.parentFile.parentFile.name
                 val artifactName = if (buildTypeName == "debug") {
-                    "${appName}-${buildTypeName}-universal-${vName}"
+                    "${appName}-${flavorName}-${buildTypeName}-${vName}"
                 } else {
-                    "${appName}-universal-${vName}"
+                    "${appName}-${flavorName}-${vName}"
                 }
                 val dest = File(apk.parentFile, "${artifactName}.apk")
                 if (apk.name != dest.name) {
@@ -91,8 +106,33 @@ tasks.register("renameApks") {
     }
 }
 
-tasks.matching { it.name.startsWith("assemble") }.configureEach {
+tasks.register("renameAabs") {
+    val appName = "openbu"
+    val vName = android.defaultConfig.versionName ?: "unknown"
+    val bundleDir = layout.buildDirectory.dir("outputs/bundle")
+    doLast {
+        bundleDir.get().asFile.walkTopDown()
+            .filter { it.extension == "aab" }
+            .filter { !it.name.startsWith(appName) }
+            .forEach { aab ->
+                val variantDir = aab.parentFile.name
+                val dest = File(aab.parentFile, "${appName}-${variantDir}-${vName}.aab")
+                aab.copyTo(dest, overwrite = true)
+            }
+    }
+}
+
+tasks.matching {
+    it.name == "assemble" ||
+        (it.name.startsWith("assemble") && (it.name.endsWith("Release") || it.name.endsWith("Debug")))
+}.configureEach {
     finalizedBy("renameApks")
+}
+tasks.matching {
+    it.name == "bundle" ||
+        (it.name.startsWith("bundle") && (it.name.endsWith("Release") || it.name.endsWith("Debug")))
+}.configureEach {
+    finalizedBy("renameAabs")
 }
 
 dependencies {
