@@ -57,7 +57,7 @@ I am strongly considering adding this to the [Google Play Store](https://play.go
 * Skip Objects support
 * Remote access via [openbu-relay](/helm/openbu-relay)
 
-[Feature requests](github.com/cygnusx-1-org/openbu/issues) are welcome.
+[Feature requests](https://github.com/cygnusx-1-org/openbu/issues) are welcome.
 
 ## Screenshots
 <p align="center">
