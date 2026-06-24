@@ -51,6 +51,12 @@ class BambuMqttClient(
     private val _printerStatus = MutableStateFlow(PrinterStatus())
     val printerStatus: StateFlow<PrinterStatus> = _printerStatus.asStateFlow()
 
+    // Flips true once a PUBLISH is received on our subscribed device/<serial>/report topic.
+    // The broker only delivers messages for the exact serial we subscribed to (and drops the
+    // connection for a wrong serial), so this is proof the serial is valid.
+    private val _reportReceived = MutableStateFlow(false)
+    val reportReceived: StateFlow<Boolean> = _reportReceived.asStateFlow()
+
     @Volatile
     var debugLogging: Boolean = false
 
@@ -131,7 +137,10 @@ class BambuMqttClient(
                     input.readFully(payload)
 
                     when (packetType) {
-                        3 -> handlePublish(payload) // PUBLISH
+                        3 -> {                       // PUBLISH
+                            _reportReceived.value = true
+                            handlePublish(payload)
+                        }
                         4 -> if (debugLogging) Log.d(TAG, "PUBACK received") // PUBACK
                         13 -> {                      // PINGREQ
                             out.write(byteArrayOf(0xD0.toByte(), 0x00))
@@ -147,6 +156,11 @@ class BambuMqttClient(
                     Log.e(TAG, "MQTT connection failed", e)
                     if (e.isNoRouteToHost()) {
                         _connectionError.value = "EHOSTUNREACH"
+                    } else if (_connectionError.value == null) {
+                        // Broker refused or closed the connection before CONNACK — commonly
+                        // Developer Mode disabled or firmware too old. Surface it so the
+                        // ViewModel can retry and ultimately show an actionable hint.
+                        _connectionError.value = "Could not reach the printer"
                     }
                 }
             } finally {

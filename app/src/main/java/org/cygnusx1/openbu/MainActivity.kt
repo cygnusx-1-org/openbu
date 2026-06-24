@@ -658,9 +658,10 @@ class MainActivity : ComponentActivity() {
                             onStartDiscovery = { viewModel.startDiscovery() },
                             onStopDiscovery = { viewModel.stopDiscovery() },
                             onGetSavedAccessCode = { serial -> viewModel.getSavedAccessCode(serial) },
-                            onConnect = { ip, accessCode, serialNumber, savePrinter ->
-                                viewModel.connect(ip, accessCode, serialNumber, savePrinter)
+                            onConnect = { ip, accessCode, serialNumber, savePrinter, manualMode ->
+                                viewModel.connect(ip, accessCode, serialNumber, savePrinter, manualMode)
                             },
+                            onRetry = { viewModel.reconnect() },
                             onDeletePrinter = { serial ->
                                 viewModel.deleteSavedPrinter(serial)
                             },

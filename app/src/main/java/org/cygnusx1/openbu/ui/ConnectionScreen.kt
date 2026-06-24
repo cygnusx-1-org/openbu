@@ -44,6 +44,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -73,7 +74,8 @@ fun ConnectionScreen(
     onStartDiscovery: () -> Unit,
     onStopDiscovery: () -> Unit,
     onGetSavedAccessCode: (serialNumber: String) -> String,
-    onConnect: (ip: String, accessCode: String, serialNumber: String, savePrinter: Boolean) -> Unit,
+    onConnect: (ip: String, accessCode: String, serialNumber: String, savePrinter: Boolean, manualMode: Boolean) -> Unit,
+    onRetry: () -> Unit = {},
     onDeletePrinter: (serialNumber: String) -> Unit = {},
 ) {
     var ip by rememberSaveable { mutableStateOf("") }
@@ -101,6 +103,15 @@ fun ConnectionScreen(
     val canConnectAuto = (selectedPrinter != null || selectedSavedPrinter != null) && accessCodeValid
     val canConnectManual = ip.isNotBlank() && accessCodeValid && serialValid
     val canConnect = if (manualMode) canConnectManual else canConnectAuto
+
+    // After a failed manual attempt, Retry takes over the Connect slot. Editing any
+    // connection option reverts to Connect; a fresh attempt (Connecting) re-arms Retry
+    // for the next failure.
+    var optionsEditedSinceAttempt by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(connectionState) {
+        if (connectionState == ConnectionState.Connecting) optionsEditedSinceAttempt = false
+    }
+    val showRetry = manualMode && connectionState == ConnectionState.Error && !optionsEditedSinceAttempt
 
     DisposableEffect(Unit) {
         onStartDiscovery()
@@ -163,7 +174,7 @@ fun ConnectionScreen(
             )
             Switch(
                 checked = manualMode,
-                onCheckedChange = { manualMode = it },
+                onCheckedChange = { manualMode = it; optionsEditedSinceAttempt = true },
                 enabled = !isConnecting,
             )
         }
@@ -173,7 +184,7 @@ fun ConnectionScreen(
         if (manualMode) {
             OutlinedTextField(
                 value = ip,
-                onValueChange = { ip = it.trim() },
+                onValueChange = { ip = it.trim(); optionsEditedSinceAttempt = true },
                 label = { Text("Printer IP Address") },
                 placeholder = { Text("192.168.1.100") },
                 singleLine = true,
@@ -190,7 +201,7 @@ fun ConnectionScreen(
 
             OutlinedTextField(
                 value = accessCode,
-                onValueChange = { accessCode = it.trim() },
+                onValueChange = { accessCode = it.trim(); optionsEditedSinceAttempt = true },
                 label = { Text("Access Code") },
                 isError = accessCode.isNotBlank() && !accessCodeValid,
                 supportingText = {
@@ -221,7 +232,7 @@ fun ConnectionScreen(
 
             OutlinedTextField(
                 value = serialNumber,
-                onValueChange = { serialNumber = it.trim() },
+                onValueChange = { serialNumber = it.trim(); optionsEditedSinceAttempt = true },
                 label = { Text("Printer Serial Number") },
                 isError = serialNumber.isNotBlank() && !serialValid,
                 supportingText = {
@@ -242,7 +253,7 @@ fun ConnectionScreen(
                 keyboardActions = KeyboardActions(
                     onDone = {
                         if (canConnect) {
-                            onConnect(ip, accessCode, serialNumber, savePrinter)
+                            onConnect(ip, accessCode, serialNumber, savePrinter, true)
                         }
                     },
                 ),
@@ -370,9 +381,9 @@ fun ConnectionScreen(
                         onDone = {
                             if (canConnect) {
                                 if (selectedSavedPrinter != null) {
-                                    onConnect(selectedSavedPrinter.ip, accessCode, selectedSavedPrinter.serialNumber, savePrinter)
+                                    onConnect(selectedSavedPrinter.ip, accessCode, selectedSavedPrinter.serialNumber, savePrinter, false)
                                 } else if (selectedPrinter != null) {
-                                    onConnect(selectedPrinter.ip, accessCode, selectedPrinter.serialNumber, savePrinter)
+                                    onConnect(selectedPrinter.ip, accessCode, selectedPrinter.serialNumber, savePrinter, false)
                                 }
                             }
                         },
@@ -413,15 +424,24 @@ fun ConnectionScreen(
 
         if (isConnecting) {
             CircularProgressIndicator()
+        } else if (showRetry) {
+            // Manual connections don't auto-retry; Retry takes the Connect slot until the
+            // user edits a connection option, then it reverts to Connect.
+            Button(
+                onClick = onRetry,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Retry")
+            }
         } else {
             Button(
                 onClick = {
                     if (manualMode) {
-                        onConnect(ip, accessCode, serialNumber, savePrinter)
+                        onConnect(ip, accessCode, serialNumber, savePrinter, true)
                     } else if (selectedSavedPrinter != null) {
-                        onConnect(selectedSavedPrinter.ip, accessCode, selectedSavedPrinter.serialNumber, savePrinter)
+                        onConnect(selectedSavedPrinter.ip, accessCode, selectedSavedPrinter.serialNumber, savePrinter, false)
                     } else if (selectedPrinter != null) {
-                        onConnect(selectedPrinter.ip, accessCode, selectedPrinter.serialNumber, savePrinter)
+                        onConnect(selectedPrinter.ip, accessCode, selectedPrinter.serialNumber, savePrinter, false)
                     }
                 },
                 enabled = canConnect,

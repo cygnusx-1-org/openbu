@@ -1,3 +1,6 @@
+import com.android.build.api.artifact.ArtifactTransformationRequest
+import com.android.build.api.artifact.SingleArtifact
+import com.android.build.api.variant.BuiltArtifact
 import java.io.FileInputStream
 import java.util.Properties
 import java.io.File
@@ -61,6 +64,12 @@ android {
                 "proguard-rules.pro"
             )
         }
+        debug {
+            // Distinct package id so debug builds install alongside the Play/release
+            // app (which is signed with a different key) instead of colliding.
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
     }
 
     compileOptions {
@@ -83,26 +92,51 @@ android {
     }
 }
 
-tasks.register("renameApks") {
-    val appName = "openbu"
-    val vName = android.defaultConfig.versionName ?: "unknown"
-    val apkDir = layout.buildDirectory.dir("outputs/apk")
-    doLast {
-        apkDir.get().asFile.walkTopDown()
-            .filter { it.extension == "apk" }
-            .forEach { apk ->
-                val buildTypeName = apk.parentFile.name
-                val flavorName = apk.parentFile.parentFile.name
-                val artifactName = if (buildTypeName == "debug") {
-                    "${appName}-${flavorName}-${buildTypeName}-${vName}"
-                } else {
-                    "${appName}-${flavorName}-${vName}"
-                }
-                val dest = File(apk.parentFile, "${artifactName}.apk")
-                if (apk.name != dest.name) {
-                    apk.renameTo(dest)
-                }
-            }
+// Name APK outputs directly (e.g. openbu-direct-debug-1.0.26.apk) so there's a single
+// correctly-named artifact and no post-build file moves — those broke installDirectDebug
+// and corrupted incremental builds. Uses the public Artifacts transform API (no internal
+// AGP classes); submit() rewrites the BuiltArtifacts metadata so install/test tasks still
+// resolve the renamed APK.
+abstract class RenameApkTask : DefaultTask() {
+    @get:InputFiles
+    abstract val apkFolder: DirectoryProperty
+
+    @get:OutputDirectory
+    abstract val outFolder: DirectoryProperty
+
+    @get:Input
+    abstract val artifactName: Property<String>
+
+    @get:Internal
+    abstract val transformationRequest: Property<ArtifactTransformationRequest<RenameApkTask>>
+
+    @TaskAction
+    fun taskAction() {
+        transformationRequest.get().submit(this) { builtArtifact: BuiltArtifact ->
+            val dest = outFolder.get().file("${artifactName.get()}.apk").asFile
+            File(builtArtifact.outputFile).copyTo(dest, overwrite = true)
+            dest
+        }
+    }
+}
+
+androidComponents {
+    onVariants { variant ->
+        val vName = android.defaultConfig.versionName ?: "unknown"
+        val apkName = if (variant.buildType == "debug") {
+            "openbu-${variant.flavorName}-${variant.buildType}-$vName"
+        } else {
+            "openbu-${variant.flavorName}-$vName"
+        }
+        val renameTask = tasks.register<RenameApkTask>(
+            "rename${variant.name.replaceFirstChar { it.uppercase() }}Apk",
+        ) {
+            artifactName.set(apkName)
+        }
+        val request = variant.artifacts.use(renameTask)
+            .wiredWithDirectories(RenameApkTask::apkFolder, RenameApkTask::outFolder)
+            .toTransformMany(SingleArtifact.APK)
+        renameTask.configure { transformationRequest.set(request) }
     }
 }
 
@@ -122,12 +156,6 @@ tasks.register("renameAabs") {
     }
 }
 
-tasks.matching {
-    it.name == "assemble" ||
-        (it.name.startsWith("assemble") && (it.name.endsWith("Release") || it.name.endsWith("Debug")))
-}.configureEach {
-    finalizedBy("renameApks")
-}
 tasks.matching {
     it.name == "bundle" ||
         (it.name.startsWith("bundle") && (it.name.endsWith("Release") || it.name.endsWith("Debug")))

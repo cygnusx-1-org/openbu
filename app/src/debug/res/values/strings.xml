@@ -1,0 +1,5 @@
+<resources>
+    <!-- Overrides the main app_name for debug builds so the .debug install is
+         visually distinguishable from the release/Play app on the same device. -->
+    <string name="app_name">Openbu (Debug)</string>
+</resources>

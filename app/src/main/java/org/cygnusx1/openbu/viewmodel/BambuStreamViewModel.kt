@@ -241,6 +241,12 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
     private var reconnectJob: Job? = null
     private var reconnectRetryCount = 0
     private val maxReconnectRetries = 5
+    // Manual-entry connections don't auto-retry: a typo'd IP/serial should fail on the
+    // single attempt and wait for the user to fix it and tap Retry, rather than looping
+    // on its own. Auto-discovered/saved printers keep the full retry count.
+    private var isManualConnection = false
+    private val effectiveMaxRetries: Int
+        get() = if (isManualConnection) 0 else maxReconnectRetries
     private var mjpegRetryCount = 0
     private var mjpegRetryJob: Job? = null
 
@@ -448,17 +454,12 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
-    private fun saveCredentials(ip: String, accessCode: String, serialNumber: String) {
-        prefs.edit()
-            .putString("access_code_$serialNumber", accessCode)
-            .apply()
-    }
-
     private fun usesMjpegCamera(serial: String): Boolean =
         printerSeriesFromSerial(serial).usesMjpegCamera
 
-    fun connect(ip: String, accessCode: String, serialNumber: String, savePrinter: Boolean = false) {
-        Log.d("AutoReconnect", "connect() called: ip=$ip, serial=$serialNumber, state=${_connectionState.value}, userDisconnected=$userDisconnected")
+    fun connect(ip: String, accessCode: String, serialNumber: String, savePrinter: Boolean = false, manualMode: Boolean = false) {
+        Log.d("AutoReconnect", "connect() called: ip=$ip, serial=$serialNumber, state=${_connectionState.value}, userDisconnected=$userDisconnected, manualMode=$manualMode")
+        isManualConnection = manualMode
         if (_connectionState.value == ConnectionState.Connecting ||
             _connectionState.value == ConnectionState.Connected
         ) {
@@ -486,9 +487,8 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         userDisconnected = false
         reconnectJob?.cancel()
         reconnectJob = null
-        if (pendingSavePrinter) {
-            saveCredentials(ip, accessCode, serialNumber)
-        }
+        // Note: the printer (credentials + saved list) is only persisted once the
+        // connection actually succeeds — see saveCurrentPrinter().
         _connectedIp.value = ip
         _connectedAccessCode.value = accessCode
         _connectedSerialNumber.value = serialNumber
@@ -526,14 +526,16 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
                         if (_connectionState.value != ConnectionState.Connected) {
                             _connectionState.value = ConnectionState.Connected
                             _hasLastConnectedPrinter.value = true
+                            // Once connected, a later drop should auto-retry like any other
+                            // printer — the no-retry rule only applies to the first attempt.
+                            isManualConnection = false
                             _isReconnecting.value = false
                             _mjpegCameraFailed.value = false
                             _noRouteToHost.value = null
                             reconnectRetryCount = 0
-                            if (pendingSavePrinter) {
-                                pendingSavePrinter = false
-                                saveCurrentPrinter()
-                            }
+                            // Note: saving the printer is deferred until a verified MQTT
+                            // report arrives (see the reportReceived collector), not on the
+                            // first camera frame — which only proves IP + access code.
                         }
                         _frame.value = bitmap
 
@@ -592,13 +594,15 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
                     if (it && _connectionState.value == ConnectionState.Connecting) {
                         _connectionState.value = ConnectionState.Connected
                         _hasLastConnectedPrinter.value = true
+                        // Once connected, a later drop should auto-retry like any other
+                        // printer — the no-retry rule only applies to the first attempt.
+                        isManualConnection = false
                         _isReconnecting.value = false
                         _noRouteToHost.value = null
                         reconnectRetryCount = 0
-                        if (pendingSavePrinter) {
-                            pendingSavePrinter = false
-                            saveCurrentPrinter()
-                        }
+                        // Saving is deferred to the reportReceived collector: a CONNACK only
+                        // proves the access code; the serial isn't validated until a report
+                        // arrives on device/<serial>/report.
                     }
                 }
             }
@@ -633,6 +637,17 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
             }
             launch {
                 mqtt.mqttDataMessages.collect { _mqttDataMessages.value = it }
+            }
+            launch {
+                // Persist the printer only once we've received a real report for this serial.
+                // A camera frame / CONNACK only proves IP + access code; a report proves the
+                // serial's subscription is valid (a wrong serial gets dropped, no report).
+                mqtt.reportReceived.collect { received ->
+                    if (received && pendingSavePrinter) {
+                        pendingSavePrinter = false
+                        saveCurrentPrinter()
+                    }
+                }
             }
         }
     }
@@ -891,11 +906,12 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
                         if (_connectionState.value != ConnectionState.Connected) {
                             _connectionState.value = ConnectionState.Connected
                             _hasLastConnectedPrinter.value = true
+                            // Once connected, a later drop should auto-retry like any other
+                            // printer — the no-retry rule only applies to the first attempt.
+                            isManualConnection = false
                             reconnectRetryCount = 0
-                            if (pendingSavePrinter) {
-                                pendingSavePrinter = false
-                                saveCurrentPrinter()
-                            }
+                            // Saving is deferred to the reportReceived collector (verified
+                            // MQTT data), not the camera stream which only proves IP + code.
                         }
                     }
                     _frame.value = bitmap
@@ -930,12 +946,23 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
             Log.d("AutoReconnect", "scheduleReconnect: skipped, missing credentials")
             return
         }
-        if (reconnectRetryCount >= maxReconnectRetries) {
+        if (reconnectRetryCount >= effectiveMaxRetries) {
             Log.d("AutoReconnect", "scheduleReconnect: max retries exhausted")
             _isReconnecting.value = false
             cleanupConnections()
-            _errorMessage.value = "Failed to reconnect after $maxReconnectRetries attempts"
+            _errorMessage.value = "Couldn't connect to the printer.\n\n" +
+                "Check that the IP address and serial number are correct. Make sure LAN Mode " +
+                "and Developer Mode are both enabled in the printer's network settings."
             _connectionState.value = ConnectionState.Error
+            if (isManualConnection) {
+                // A manual attempt that never connected shouldn't be auto-reconnected on
+                // resume or relaunch — keep the user on the manual entry screen.
+                _hasLastConnectedPrinter.value = false
+                prefs.edit()
+                    .remove("last_connected_serial")
+                    .remove("last_connected_ip")
+                    .apply()
+            }
             return
         }
         _isReconnecting.value = true
@@ -945,7 +972,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
             delay(3000)
             _connectionState.value = ConnectionState.Disconnected
             _errorMessage.value = null
-            connect(ip, code, serial)
+            connect(ip, code, serial, savePrinter = pendingSavePrinter, manualMode = isManualConnection)
         }
     }
 
@@ -965,13 +992,18 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         _isReconnecting.value = true
         _connectionState.value = ConnectionState.Disconnected
         _errorMessage.value = null
-        connect(ip, code, serial)
+        connect(ip, code, serial, savePrinter = pendingSavePrinter, manualMode = isManualConnection)
     }
 
     fun retryIfNeeded() {
         Log.d("AutoReconnect", "retryIfNeeded: state=${_connectionState.value}, hasLastConnected=${_hasLastConnectedPrinter.value}, userDisconnected=$userDisconnected")
+        // Only auto-reconnect on resume if we're returning to an active session (the
+        // dashboard). If the user is sitting on the connect screen — which is exactly when
+        // hasLastConnectedPrinter is false — leave them there instead of jumping to the
+        // dashboard.
+        if (!_hasLastConnectedPrinter.value) return
         if (_connectionState.value == ConnectionState.Error ||
-            (_connectionState.value == ConnectionState.Disconnected && _hasLastConnectedPrinter.value)
+            _connectionState.value == ConnectionState.Disconnected
         ) {
             val ip = _connectedIp.value.ifBlank { prefs.getString("last_connected_ip", "") ?: "" }
             val serial = _connectedSerialNumber.value.ifBlank { prefs.getString("last_connected_serial", "") ?: "" }
@@ -1060,6 +1092,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
             .putString("saved_printer_serials", serials.joinToString(","))
             .putString("saved_ip_$serial", ip)
             .putString("saved_name_$serial", deviceName)
+            .putString("access_code_$serial", _connectedAccessCode.value)
             .apply()
 
         loadSavedPrinters()
