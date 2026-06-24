@@ -41,20 +41,24 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 
+private const val REDACTED = "REDACTED"
+
 private fun redactLogText(text: String, accessCode: String, serialNumber: String): String {
     var redacted = text
     if (accessCode.isNotEmpty()) {
-        redacted = redacted.replace(accessCode, "REDACTED")
+        redacted = redacted.replace(accessCode, REDACTED)
     }
     if (serialNumber.isNotEmpty()) {
-        redacted = redacted.replace(serialNumber, "REDACTED")
+        redacted = redacted.replace(serialNumber, REDACTED)
     }
     // Redact passwords (e.g., "PASS a1b2c3d4")
-    redacted = Regex("""(?<=PASS )\S+""").replace(redacted, "REDACTED")
+    redacted = Regex("""(?<=PASS )\S+""").replace(redacted, REDACTED)
+    // Redact passwords embedded in URLs (e.g., "rtsp://user:pass@host/path")
+    redacted = Regex("""(://[^/@\s:]+:)[^@\s]+@""").replace(redacted, "$1$REDACTED@")
     // Redact IP addresses (e.g., "10.0.0.1")
-    redacted = Regex("""\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b""").replace(redacted, "REDACTED")
+    redacted = Regex("""\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b""").replace(redacted, REDACTED)
     // Redact PASV IP format (e.g., "(10,0,0,1,7,232)")
-    redacted = Regex("""\(\d{1,3},\d{1,3},\d{1,3},\d{1,3},""").replace(redacted, "(REDACTED,")
+    redacted = Regex("""\(\d{1,3},\d{1,3},\d{1,3},\d{1,3},""").replace(redacted, "($REDACTED,")
     return redacted
 }
 
