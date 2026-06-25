@@ -76,7 +76,7 @@ fun SettingsScreen(
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
+                            contentDescription = stringResource(R.string.cd_back),
                         )
                     }
                 },
@@ -84,7 +84,7 @@ fun SettingsScreen(
                     IconButton(onClick = { showAboutDialog = true }) {
                         Icon(
                             imageVector = Icons.Filled.Info,
-                            contentDescription = "About",
+                            contentDescription = stringResource(R.string.cd_about),
                         )
                     }
                 },
@@ -117,13 +117,13 @@ fun SettingsScreen(
                     )
                     Column {
                         Text(
-                            text = "General",
+                            text = stringResource(R.string.general),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onBackground,
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "Connection, display, and app preferences",
+                            text = stringResource(R.string.general_settings_desc),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -151,13 +151,13 @@ fun SettingsScreen(
                     )
                     Column {
                         Text(
-                            text = "Remote Relay",
+                            text = stringResource(R.string.remote_relay),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onBackground,
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "SOCKS5 relay configuration",
+                            text = stringResource(R.string.remote_relay_desc),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -185,13 +185,13 @@ fun SettingsScreen(
                     )
                     Column {
                         Text(
-                            text = "Debugging",
+                            text = stringResource(R.string.debug),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onBackground,
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "Logging, MQTT data, and logcat viewer",
+                            text = stringResource(R.string.debug_settings_desc),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

@@ -81,6 +81,16 @@
     <string name="save_temperature_celsius">Save %1$d°C</string>
     <string name="percent">%1$d%%</string>
     <string name="save_percent">Save %1$d%%</string>
+    <string name="fps">%1$.1f FPS</string>
+    <string name="temp_current_target">%1$.1f / %2$.1f °C</string>
+    <string name="layer_progress">Layer %1$d/%2$d</string>
+    <string name="ams_temp_humidity">%1$s  %2$s°C / Humidity %3$s%%</string>
+    <string name="grams_value">%1$dg</string>
+    <string name="target_temp_celsius">%1$d °C</string>
+    <string name="object_label">%1$d: %2$s</string>
+    <string name="density_dpi_value">%1$d dpi</string>
+    <string name="mqtt_messages_received">%1$d unique message structure(s) received</string>
+    <string name="available_paths">" [%1$s]"</string>
 
     <!-- Content descriptions -->
     <string name="cd_menu">Menu</string>
@@ -101,4 +111,94 @@
     <string name="connection_failed">Connection to printer failed</string>
     <string name="could_not_connect">Couldn\'t connect to the printer.\n\nCheck that the IP address and serial number are correct. Make sure LAN Mode and Developer Mode are both enabled in the printer\'s network settings.</string>
     <string name="no_route_to_host">No route to host, %1$s.\nPrinter off or disconnected from WiFi?</string>
+
+    <!-- Connection screen -->
+    <string name="connect_subtitle">Connect to your Bambu Lab printers in Developer Mode.</string>
+    <string name="manual_entry">Manual entry</string>
+    <string name="searching_for_printers">Searching for printers on your network…</string>
+    <string name="searching_for_printers_hint">Make sure your printer is on and Developer Mode is enabled.</string>
+    <string name="saved_printers">Saved Printers</string>
+    <string name="discovered_printers">Discovered Printers</string>
+    <string name="save_printer">Save printer</string>
+    <string name="save_printer_desc">Remember this printer for quick connect</string>
+
+    <!-- Dashboard -->
+    <string name="relayed">Relayed</string>
+    <string name="camera_two_connection_warning">Warning: Printer\'s internal camera may have a two connection limit</string>
+    <string name="hms_error_label">HMS error(s)</string>
+    <string name="chamber_light">Chamber Light</string>
+    <string name="empty">Empty</string>
+    <string name="external_spool">External Spool</string>
+    <string name="nozzle">Nozzle</string>
+    <string name="bed">Bed</string>
+    <string name="part_fan">Part fan</string>
+    <string name="aux_fan">Aux fan</string>
+    <string name="chamber_fan">Chamber fan</string>
+    <string name="nozzle_temperature">Nozzle Temperature</string>
+    <string name="bed_temperature">Bed Temperature</string>
+    <string name="part_fan_speed">Part Fan Speed</string>
+    <string name="aux_fan_speed">Aux Fan Speed</string>
+    <string name="chamber_fan_speed">Chamber Fan Speed</string>
+
+    <!-- Settings menu -->
+    <string name="general_settings_desc">Connection, display, and app preferences</string>
+    <string name="remote_relay_desc">SOCKS5 relay configuration</string>
+    <string name="debug_settings_desc">Logging, MQTT data, and logcat viewer</string>
+
+    <!-- General settings -->
+    <string name="internal_stream">Internal stream</string>
+    <string name="internal_stream_desc">Show the Bambu camera stream on the dashboard</string>
+    <string name="auto_save_printers">Auto-save printers</string>
+    <string name="auto_save_printers_desc">Default to saving printers on connect</string>
+    <string name="override_device_theme">Override device theme</string>
+    <string name="override_device_theme_desc">Use the opposite of the device\'s light/dark mode</string>
+    <string name="vlc_decoder_rtsp">Use VLC decoder for RTSP</string>
+    <string name="vlc_decoder_rtsp_desc">Software decoder for devices that can\'t play high-res streams</string>
+
+    <!-- Printer settings -->
+    <string name="saved_printer">Saved printer</string>
+    <string name="saved_printer_desc">This printer is saved for quick connect</string>
+    <string name="external_rtsp_stream">External RTSP stream</string>
+    <string name="external_rtsp_stream_desc">Show an external RTSP camera on the dashboard</string>
+    <string name="background_color">Background color</string>
+    <string name="background_color_desc">Custom background for this printer</string>
+    <string name="skip_relay_printer">Skip relay for this printer</string>
+    <string name="skip_relay_printer_desc">Connect directly to this printer instead of through the relay</string>
+
+    <!-- Relay settings -->
+    <string name="enable_relay">Enable relay</string>
+    <string name="enable_relay_desc">Route all printer traffic through a SOCKS5 relay</string>
+
+    <!-- Debug settings -->
+    <string name="device_properties">Device properties</string>
+    <string name="density_dpi">Density DPI</string>
+    <string name="debug_logging">Debug logging</string>
+    <string name="debug_logging_desc">Log MQTT and camera stream details to Logcat</string>
+    <string name="redact_logs">Redact logs</string>
+    <string name="redact_logs_desc">Redact sensitive data (passwords, IPs, serial numbers) when copying logs</string>
+    <string name="data">Data</string>
+    <string name="mqtt_data">MQTT data</string>
+    <string name="logs">Logs</string>
+    <string name="all_logs">All logs</string>
+    <string name="all_logs_desc">Capture and view all app logs</string>
+    <string name="camera_logs">Camera logs</string>
+    <string name="filter_camera">Filter: BambuCamera</string>
+    <string name="mqtt_logs">MQTT logs</string>
+    <string name="filter_mqtt">Filter: BambuMqtt</string>
+    <string name="ftps_logs">FTPS logs</string>
+    <string name="filter_ftps">Filter: BambuFtps</string>
+    <string name="all_logs_title">All Logs</string>
+    <string name="camera_logs_title">Camera Logs</string>
+    <string name="mqtt_logs_title">MQTT Logs</string>
+    <string name="ftps_logs_title">FTPS Logs</string>
+
+    <!-- File manager -->
+    <string name="directory_empty">Directory is empty</string>
+    <string name="parent_directory">..</string>
+
+    <!-- Timelapse -->
+    <string name="no_recordings_found">No recordings found</string>
+
+    <!-- Skip objects -->
+    <string name="already_skipped">Already skipped</string>
 </resources>

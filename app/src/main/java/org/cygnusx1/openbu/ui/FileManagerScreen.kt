@@ -132,7 +132,7 @@ fun FileManagerScreen(
                             onBack()
                         }
                     }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cd_back))
                     }
                 },
                 actions = {
@@ -140,7 +140,7 @@ fun FileManagerScreen(
                         onClick = { filePicker.launch(arrayOf("*/*")) },
                         enabled = transferProgress == null,
                     ) {
-                        Icon(Icons.Filled.Upload, contentDescription = "Upload file")
+                        Icon(Icons.Filled.Upload, contentDescription = stringResource(R.string.cd_upload_file))
                     }
                 },
             )
@@ -175,7 +175,7 @@ fun FileManagerScreen(
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "${(transferProgress * 100).toInt()}%",
+                            text = stringResource(R.string.percent, (transferProgress * 100).toInt()),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -183,7 +183,7 @@ fun FileManagerScreen(
                     IconButton(onClick = onCancelTransfer) {
                         Icon(
                             Icons.Filled.Close,
-                            contentDescription = "Cancel transfer",
+                            contentDescription = stringResource(R.string.cd_cancel_transfer),
                             tint = MaterialTheme.colorScheme.error,
                         )
                     }
@@ -198,7 +198,7 @@ fun FileManagerScreen(
                     )
                 } else if (fileList.isEmpty() && !isLoading && transferProgress == null) {
                     Text(
-                        text = "Directory is empty",
+                        text = stringResource(R.string.directory_empty),
                         modifier = Modifier.align(Alignment.Center),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -217,12 +217,12 @@ fun FileManagerScreen(
                                 ) {
                                     Icon(
                                         Icons.Filled.CreateNewFolder,
-                                        contentDescription = "Parent directory",
+                                        contentDescription = stringResource(R.string.cd_parent_directory),
                                         modifier = Modifier.size(24.dp),
                                         tint = MaterialTheme.colorScheme.primary,
                                     )
                                     Spacer(modifier = Modifier.width(16.dp))
-                                    Text(text = "..", style = MaterialTheme.typography.bodyLarge)
+                                    Text(text = stringResource(R.string.parent_directory), style = MaterialTheme.typography.bodyLarge)
                                 }
                                 HorizontalDivider()
                             }

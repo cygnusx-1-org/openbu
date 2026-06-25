@@ -118,7 +118,7 @@ fun SkipObjectsScreen(
                 title = { Text(stringResource(R.string.skip_objects)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cd_back))
                     }
                 },
             )
@@ -245,7 +245,7 @@ fun SkipObjectsScreen(
                                 )
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        text = "${obj.identifyId}: ${obj.name}",
+                                        text = stringResource(R.string.object_label, obj.identifyId, obj.name),
                                         style = MaterialTheme.typography.bodyMedium,
                                         textDecoration = if (isSkipped) TextDecoration.LineThrough else null,
                                         color = if (isSkipped) {
@@ -256,7 +256,7 @@ fun SkipObjectsScreen(
                                     )
                                     if (isSkipped) {
                                         Text(
-                                            text = "Already skipped",
+                                            text = stringResource(R.string.already_skipped),
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                                         )
@@ -306,7 +306,7 @@ private fun PlateImageWithMarkers(
     ) {
         Image(
             bitmap = plateImage.asImageBitmap(),
-            contentDescription = "Build plate",
+            contentDescription = stringResource(R.string.cd_build_plate),
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Fit,
         )

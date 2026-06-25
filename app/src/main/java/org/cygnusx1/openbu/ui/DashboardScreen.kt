@@ -192,7 +192,7 @@ fun DashboardScreen(
 
     if (showNozzleDialog) {
         TemperatureDialog(
-            title = "Nozzle Temperature",
+            title = stringResource(R.string.nozzle_temperature),
             presetKey = "nozzle_presets",
             currentTemp = printerStatus.nozzleTargetTemper.toInt(),
             maxTemp = series.maxNozzleTemp,
@@ -206,7 +206,7 @@ fun DashboardScreen(
 
     if (showBedDialog) {
         TemperatureDialog(
-            title = "Bed Temperature",
+            title = stringResource(R.string.bed_temperature),
             presetKey = "bed_presets",
             currentTemp = printerStatus.bedTargetTemper.toInt(),
             maxTemp = series.maxBedTemp,
@@ -221,7 +221,7 @@ fun DashboardScreen(
     if (showPartFanDialog) {
         Log.d("FanControl", "Part fan dialog opened: currentPwm=${printerStatus.coolingFanSpeed} (${kotlin.math.round(printerStatus.coolingFanSpeed * 100f / 255f).toInt()}%)")
         FanSpeedDialog(
-            title = "Part Fan Speed",
+            title = stringResource(R.string.part_fan_speed),
             presetKey = "part_fan_presets",
             currentSpeedPwm = printerStatus.coolingFanSpeed,
             onDismiss = { showPartFanDialog = false },
@@ -237,7 +237,7 @@ fun DashboardScreen(
     if (showAuxFanDialog) {
         Log.d("FanControl", "Aux fan dialog opened: currentPwm=${printerStatus.bigFan1Speed} (${kotlin.math.round(printerStatus.bigFan1Speed * 100f / 255f).toInt()}%)")
         FanSpeedDialog(
-            title = "Aux Fan Speed",
+            title = stringResource(R.string.aux_fan_speed),
             presetKey = "aux_fan_presets",
             currentSpeedPwm = printerStatus.bigFan1Speed,
             onDismiss = { showAuxFanDialog = false },
@@ -253,7 +253,7 @@ fun DashboardScreen(
     if (showChamberFanDialog) {
         Log.d("FanControl", "Chamber fan dialog opened: currentPwm=${printerStatus.bigFan2Speed} (${kotlin.math.round(printerStatus.bigFan2Speed * 100f / 255f).toInt()}%)")
         FanSpeedDialog(
-            title = "Chamber Fan Speed",
+            title = stringResource(R.string.chamber_fan_speed),
             presetKey = "chamber_fan_presets",
             currentSpeedPwm = printerStatus.bigFan2Speed,
             onDismiss = { showChamberFanDialog = false },
@@ -283,7 +283,7 @@ fun DashboardScreen(
                                 )
                                 if (result is HmsWikiResult.NoMatch && result.availablePaths.isNotEmpty()) {
                                     Text(
-                                        text = " [${result.availablePaths.joinToString(", ")}]",
+                                        text = stringResource(R.string.available_paths, result.availablePaths.joinToString(", ")),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
@@ -328,7 +328,7 @@ fun DashboardScreen(
             ModalDrawerSheet(modifier = Modifier.width(280.dp)) {
                 Spacer(modifier = Modifier.height(VerticalCardPadding))
                 Text(
-                    text = "Openbu",
+                    text = stringResource(R.string.app_name),
                     style = MaterialTheme.typography.headlineSmall,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 )
@@ -421,7 +421,7 @@ fun DashboardScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        text = "Remote Relay",
+                        text = stringResource(R.string.remote_relay),
                         style = MaterialTheme.typography.bodyLarge,
                         modifier = Modifier.weight(1f),
                     )
@@ -449,7 +449,7 @@ fun DashboardScreen(
             ) {
                 Icon(
                     imageVector = Icons.Filled.Menu,
-                    contentDescription = "Menu",
+                    contentDescription = stringResource(R.string.cd_menu),
                     tint = MaterialTheme.colorScheme.onBackground,
                 )
             }
@@ -459,7 +459,7 @@ fun DashboardScreen(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = "Openbu",
+                        text = stringResource(R.string.app_name),
                         style = MaterialTheme.typography.headlineMedium,
                         color = MaterialTheme.colorScheme.onBackground,
                     )
@@ -498,7 +498,7 @@ fun DashboardScreen(
                 if (mjpegCameraFailed) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Warning: Printer's internal camera may have a two connection limit",
+                        text = stringResource(R.string.camera_two_connection_warning),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
                     )
@@ -511,7 +511,7 @@ fun DashboardScreen(
                 if (printerStatus.hmsErrors.isNotEmpty()) {
                     TextButton(onClick = { showHmsDialog = true }) {
                         Text(
-                            text = "HMS error(s)",
+                            text = stringResource(R.string.hms_error_label),
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.labelSmall,
                         )
@@ -520,7 +520,7 @@ fun DashboardScreen(
                 IconButton(onClick = { showSpeedDialog = true }) {
                     Icon(
                         imageVector = Icons.Filled.Speed,
-                        contentDescription = "Print Speed",
+                        contentDescription = stringResource(R.string.print_speed),
                         tint = MaterialTheme.colorScheme.onBackground,
                     )
                 }
@@ -553,7 +553,7 @@ fun DashboardScreen(
                     if (frame != null) {
                         Image(
                             bitmap = frame.asImageBitmap(),
-                            contentDescription = "Camera preview",
+                            contentDescription = stringResource(R.string.cd_camera_preview),
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Fit,
                         )
@@ -568,7 +568,7 @@ fun DashboardScreen(
                             .padding(horizontal = 8.dp, vertical = 4.dp),
                     ) {
                         Text(
-                            text = "%.1f FPS".format(fps),
+                            text = stringResource(R.string.fps, fps),
                             color = Color.White,
                             fontSize = 12.sp,
                         )
@@ -584,7 +584,7 @@ fun DashboardScreen(
                                 .padding(horizontal = 8.dp, vertical = 4.dp),
                         ) {
                             Text(
-                                text = "Relayed",
+                                text = stringResource(R.string.relayed),
                                 color = Color.White,
                                 fontSize = 12.sp,
                             )
@@ -623,7 +623,7 @@ fun DashboardScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = "Chamber Light",
+                    text = stringResource(R.string.chamber_light),
                     style = MaterialTheme.typography.bodyLarge,
                 )
 
@@ -652,38 +652,38 @@ fun DashboardScreen(
         // Nozzle, Bed & Fan speeds
         Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             IconStatusCard(
-                title = "Nozzle",
+                title = stringResource(R.string.nozzle),
                 iconRes = R.drawable.ic_nozzle,
-                value = "%.1f / %.1f \u00B0C".format(printerStatus.nozzleTemper, printerStatus.nozzleTargetTemper),
+                value = stringResource(R.string.temp_current_target, printerStatus.nozzleTemper, printerStatus.nozzleTargetTemper),
                 modifier = Modifier.weight(1f).fillMaxHeight(),
                 onClick = { showNozzleDialog = true },
             )
             IconStatusCard(
-                title = "Bed",
+                title = stringResource(R.string.bed),
                 iconRes = R.drawable.ic_bed,
-                value = "%.1f / %.1f \u00B0C".format(printerStatus.bedTemper, printerStatus.bedTargetTemper),
+                value = stringResource(R.string.temp_current_target, printerStatus.bedTemper, printerStatus.bedTargetTemper),
                 modifier = Modifier.weight(1f).fillMaxHeight(),
                 onClick = { showBedDialog = true },
             )
             IconStatusCard(
-                title = "Part fan",
+                title = stringResource(R.string.part_fan),
                 iconRes = R.drawable.ic_part_fan,
-                value = "${fanSpeedPercent(printerStatus.coolingFanSpeed)}%",
+                value = stringResource(R.string.percent, fanSpeedPercent(printerStatus.coolingFanSpeed)),
                 modifier = Modifier.weight(1f).fillMaxHeight(),
                 onClick = { showPartFanDialog = true },
             )
             if (isEnclosed) {
                 IconStatusCard(
-                    title = "Aux fan",
+                    title = stringResource(R.string.aux_fan),
                     iconRes = R.drawable.ic_aux_fan,
-                    value = "${fanSpeedPercent(printerStatus.bigFan1Speed)}%",
+                    value = stringResource(R.string.percent, fanSpeedPercent(printerStatus.bigFan1Speed)),
                     modifier = Modifier.weight(1f).fillMaxHeight(),
                     onClick = { showAuxFanDialog = true },
                 )
                 IconStatusCard(
-                    title = "Chamber fan",
+                    title = stringResource(R.string.chamber_fan),
                     iconRes = R.drawable.ic_chamber_fan,
-                    value = "${fanSpeedPercent(printerStatus.bigFan2Speed)}%",
+                    value = stringResource(R.string.percent, fanSpeedPercent(printerStatus.bigFan2Speed)),
                     modifier = Modifier.weight(1f).fillMaxHeight(),
                     onClick = { showChamberFanDialog = true },
                 )
@@ -887,13 +887,13 @@ private fun PrintStatusCard(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            text = "$percent%",
+                            text = stringResource(R.string.percent, percent),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onPrimary,
                         )
                         Text(
-                            text = "Layer ${printerStatus.layerNum}/${printerStatus.totalLayerNum}",
+                            text = stringResource(R.string.layer_progress, printerStatus.layerNum, printerStatus.totalLayerNum),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface,
@@ -915,7 +915,7 @@ private fun PrintStatusCard(
                             ) {
                                 Icon(
                                     imageVector = Icons.Filled.Pause,
-                                    contentDescription = "Pause",
+                                    contentDescription = stringResource(R.string.pause),
                                     modifier = Modifier.size(18.dp),
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
@@ -928,7 +928,7 @@ private fun PrintStatusCard(
                             ) {
                                 Icon(
                                     imageVector = Icons.Filled.PlayArrow,
-                                    contentDescription = "Resume",
+                                    contentDescription = stringResource(R.string.resume),
                                     modifier = Modifier.size(18.dp),
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
@@ -941,7 +941,7 @@ private fun PrintStatusCard(
                         ) {
                             Icon(
                                 imageVector = Icons.Filled.Stop,
-                                contentDescription = "Stop",
+                                contentDescription = stringResource(R.string.stop),
                                 modifier = Modifier.size(18.dp),
                             )
                             Spacer(modifier = Modifier.width(4.dp))
@@ -1010,7 +1010,7 @@ private fun AmsCard(amsUnit: AmsUnit, modifier: Modifier = Modifier, onTrayClick
                 .padding(horizontal = 16.dp, vertical = 12.dp),
         ) {
             Text(
-                text = "$amsLabel  ${amsUnit.temp}\u00B0C / Humidity ${amsUnit.humidity}%",
+                text = stringResource(R.string.ams_temp_humidity, amsLabel, amsUnit.temp, amsUnit.humidity),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -1053,7 +1053,7 @@ private fun FilamentSlot(tray: AmsTray, onClick: () -> Unit = {}) {
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        text = "Empty",
+                        text = stringResource(R.string.empty),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
@@ -1072,7 +1072,7 @@ private fun FilamentSlot(tray: AmsTray, onClick: () -> Unit = {}) {
                 ) {
                     if (grams != null) {
                         Text(
-                            text = "${grams}g",
+                            text = stringResource(R.string.grams_value, grams),
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
                             color = contrastTextColor(bgColor),
@@ -1103,7 +1103,7 @@ private fun ExternalSpoolCard(vtTray: AmsTray?, modifier: Modifier = Modifier, o
                 .padding(horizontal = 16.dp, vertical = 12.dp),
         ) {
             Text(
-                text = "External Spool",
+                text = stringResource(R.string.external_spool),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -1125,7 +1125,7 @@ private fun ExternalSpoolCard(vtTray: AmsTray?, modifier: Modifier = Modifier, o
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Text(
-                                    text = "Empty",
+                                    text = stringResource(R.string.empty),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     maxLines = 1,
@@ -1170,7 +1170,7 @@ private fun RtspStreamCard(player: ExoPlayer, onClick: () -> Unit, isRelayed: Bo
                         .padding(horizontal = 8.dp, vertical = 4.dp),
                 ) {
                     Text(
-                        text = "Relayed",
+                        text = stringResource(R.string.relayed),
                         color = Color.White,
                         fontSize = 12.sp,
                     )
@@ -1475,7 +1475,7 @@ private fun TemperatureDialog(
                         Text("−", style = MaterialTheme.typography.headlineMedium)
                     }
                     Text(
-                        text = "$targetTemp °C",
+                        text = stringResource(R.string.target_temp_celsius, targetTemp),
                         style = MaterialTheme.typography.headlineMedium,
                         modifier = Modifier.padding(horizontal = horizontalPadding),
                     )
@@ -1497,7 +1497,7 @@ private fun TemperatureDialog(
                                 trailingIcon = {
                                     Icon(
                                         Icons.Filled.Close,
-                                        contentDescription = "Remove preset",
+                                        contentDescription = stringResource(R.string.cd_remove_preset),
                                         modifier = Modifier
                                             .size(16.dp)
                                             .clickable {
@@ -1519,7 +1519,7 @@ private fun TemperatureDialog(
                                 leadingIcon = {
                                     Icon(
                                         Icons.Filled.Add,
-                                        contentDescription = "Save preset",
+                                        contentDescription = stringResource(R.string.cd_save_preset),
                                         modifier = Modifier.size(16.dp),
                                     )
                                 },
@@ -1582,7 +1582,7 @@ private fun FanSpeedDialog(
                         Text("−", style = MaterialTheme.typography.headlineMedium)
                     }
                     Text(
-                        text = "$targetSpeed%",
+                        text = stringResource(R.string.percent, targetSpeed),
                         style = MaterialTheme.typography.headlineMedium,
                         modifier = Modifier.padding(horizontal = horizontalPadding),
                     )
@@ -1604,7 +1604,7 @@ private fun FanSpeedDialog(
                                 trailingIcon = {
                                     Icon(
                                         Icons.Filled.Close,
-                                        contentDescription = "Remove preset",
+                                        contentDescription = stringResource(R.string.cd_remove_preset),
                                         modifier = Modifier
                                             .size(16.dp)
                                             .clickable {
@@ -1626,7 +1626,7 @@ private fun FanSpeedDialog(
                                 leadingIcon = {
                                     Icon(
                                         Icons.Filled.Add,
-                                        contentDescription = "Save preset",
+                                        contentDescription = stringResource(R.string.cd_save_preset),
                                         modifier = Modifier.size(16.dp),
                                     )
                                 },

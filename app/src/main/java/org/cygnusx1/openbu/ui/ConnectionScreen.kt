@@ -150,7 +150,7 @@ fun ConnectionScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
-            text = "Openbu",
+            text = stringResource(R.string.app_name),
             style = TextStyle(fontSize = 32.sp),
             color = MaterialTheme.colorScheme.onBackground,
         )
@@ -158,7 +158,7 @@ fun ConnectionScreen(
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Connect to your Bambu Lab printers in Developer Mode.",
+            text = stringResource(R.string.connect_subtitle),
             style = TextStyle(fontSize = 14.sp),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -171,7 +171,7 @@ fun ConnectionScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Text(
-                text = "Manual entry",
+                text = stringResource(R.string.manual_entry),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onBackground,
             )
@@ -276,13 +276,13 @@ fun ConnectionScreen(
                     CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = "Searching for printers on your network...",
+                        text = stringResource(R.string.searching_for_printers),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Make sure your printer is on and Developer Mode is enabled.",
+                        text = stringResource(R.string.searching_for_printers_hint),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -297,7 +297,7 @@ fun ConnectionScreen(
                     if (savedPrinters.isNotEmpty()) {
                         item(key = "header_saved") {
                             Text(
-                                text = "Saved Printers",
+                                text = stringResource(R.string.saved_printers),
                                 style = MaterialTheme.typography.labelLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(vertical = 4.dp),
@@ -336,7 +336,7 @@ fun ConnectionScreen(
                     if (filteredDiscovered.isNotEmpty()) {
                         item(key = "header_discovered") {
                             Text(
-                                text = "Discovered Printers",
+                                text = stringResource(R.string.discovered_printers),
                                 style = MaterialTheme.typography.labelLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(top = if (savedPrinters.isNotEmpty()) 8.dp else 0.dp, bottom = 4.dp),
@@ -419,12 +419,12 @@ fun ConnectionScreen(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Save printer",
+                    text = stringResource(R.string.save_printer),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onBackground,
                 )
                 Text(
-                    text = "Remember this printer for quick connect",
+                    text = stringResource(R.string.save_printer_desc),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

@@ -48,7 +48,7 @@ fun GeneralSettingsScreen(
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
+                            contentDescription = stringResource(R.string.cd_back),
                         )
                     }
                 },
@@ -70,13 +70,13 @@ fun GeneralSettingsScreen(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Internal stream",
+                        text = stringResource(R.string.internal_stream),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onBackground,
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "Show the Bambu camera stream on the dashboard",
+                        text = stringResource(R.string.internal_stream_desc),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -96,13 +96,13 @@ fun GeneralSettingsScreen(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Auto-save printers",
+                        text = stringResource(R.string.auto_save_printers),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onBackground,
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "Default to saving printers on connect",
+                        text = stringResource(R.string.auto_save_printers_desc),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -122,13 +122,13 @@ fun GeneralSettingsScreen(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Override device theme",
+                        text = stringResource(R.string.override_device_theme),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onBackground,
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "Use the opposite of the device's light/dark mode",
+                        text = stringResource(R.string.override_device_theme_desc),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -148,13 +148,13 @@ fun GeneralSettingsScreen(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Use VLC decoder for RTSP",
+                        text = stringResource(R.string.vlc_decoder_rtsp),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onBackground,
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "Software decoder for devices that can't play high-res streams",
+                        text = stringResource(R.string.vlc_decoder_rtsp_desc),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

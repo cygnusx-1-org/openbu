@@ -51,8 +51,10 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import org.cygnusx1.openbu.R
 import org.cygnusx1.openbu.network.FtpFileEntry
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -104,7 +106,7 @@ fun TimelapseScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cd_back))
                     }
                 },
                 actions = {
@@ -147,7 +149,7 @@ fun TimelapseScreen(
                                 .padding(top = 4.dp),
                         )
                         Text(
-                            text = "${(downloadProgress * 100).toInt()}%",
+                            text = stringResource(R.string.percent, (downloadProgress * 100).toInt()),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = 2.dp),
@@ -156,7 +158,7 @@ fun TimelapseScreen(
                     IconButton(onClick = onCancelDownload) {
                         Icon(
                             Icons.Filled.Close,
-                            contentDescription = "Cancel download",
+                            contentDescription = stringResource(R.string.cd_cancel_download),
                             tint = MaterialTheme.colorScheme.error,
                         )
                     }
@@ -170,7 +172,7 @@ fun TimelapseScreen(
                     )
                 } else if (fileList.isEmpty() && !isLoading) {
                     Text(
-                        text = "No recordings found",
+                        text = stringResource(R.string.no_recordings_found),
                         modifier = Modifier.align(Alignment.Center),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -231,7 +233,7 @@ private fun VideoThumbnailCard(
                 } else {
                     Icon(
                         imageVector = Icons.Filled.Videocam,
-                        contentDescription = "Video",
+                        contentDescription = stringResource(R.string.cd_video),
                         modifier = Modifier.size(32.dp),
                         tint = Color.Gray,
                     )

@@ -81,7 +81,7 @@ fun DebuggingSettingsScreen(
     val configuration = LocalConfiguration.current
     var showMqttDataDialog by remember { mutableStateOf(false) }
     var showLogcatDialog by remember { mutableStateOf(false) }
-    var logDialogTitle by remember { mutableStateOf("Logs") }
+    var logDialogTitleRes by remember { mutableStateOf(R.string.logs) }
     val clipboardManager = LocalClipboardManager.current
 
     Scaffold(
@@ -92,7 +92,7 @@ fun DebuggingSettingsScreen(
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
+                            contentDescription = stringResource(R.string.cd_back),
                         )
                     }
                 },
@@ -109,7 +109,7 @@ fun DebuggingSettingsScreen(
         ) {
             // Device properties section
             Text(
-                text = "Device properties",
+                text = stringResource(R.string.device_properties),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onBackground,
             )
@@ -122,13 +122,13 @@ fun DebuggingSettingsScreen(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Density DPI",
+                        text = stringResource(R.string.density_dpi),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onBackground,
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "${configuration.densityDpi} dpi",
+                        text = stringResource(R.string.density_dpi_value, configuration.densityDpi),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -144,13 +144,13 @@ fun DebuggingSettingsScreen(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Debug logging",
+                        text = stringResource(R.string.debug_logging),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onBackground,
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "Log MQTT and camera stream details to Logcat",
+                        text = stringResource(R.string.debug_logging_desc),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -170,13 +170,13 @@ fun DebuggingSettingsScreen(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Redact logs",
+                        text = stringResource(R.string.redact_logs),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onBackground,
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "Redact sensitive data (passwords, IPs, serial numbers) when copying logs",
+                        text = stringResource(R.string.redact_logs_desc),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -191,7 +191,7 @@ fun DebuggingSettingsScreen(
 
             // Data section
             Text(
-                text = "Data",
+                text = stringResource(R.string.data),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onBackground,
             )
@@ -216,13 +216,13 @@ fun DebuggingSettingsScreen(
                     )
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "MQTT data",
+                            text = stringResource(R.string.mqtt_data),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onBackground,
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "${mqttDataMessages.size} unique message structure(s) received",
+                            text = stringResource(R.string.mqtt_messages_received, mqttDataMessages.size),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -234,7 +234,7 @@ fun DebuggingSettingsScreen(
 
             // Logs section
             Text(
-                text = "Logs",
+                text = stringResource(R.string.logs),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onBackground,
             )
@@ -248,7 +248,7 @@ fun DebuggingSettingsScreen(
                 onClick = {
                     onCaptureLogcat(null)
                     showLogcatDialog = true
-                    logDialogTitle = "All Logs"
+                    logDialogTitleRes = R.string.all_logs_title
                 },
             ) {
                 Row(
@@ -265,13 +265,13 @@ fun DebuggingSettingsScreen(
                     )
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "All logs",
+                            text = stringResource(R.string.all_logs),
                             style = MaterialTheme.typography.bodyLarge,
                             color = if (debugLogging) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "Capture and view all app logs",
+                            text = stringResource(R.string.all_logs_desc),
                             style = MaterialTheme.typography.bodySmall,
                             color = if (debugLogging) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                         )
@@ -288,7 +288,7 @@ fun DebuggingSettingsScreen(
                 onClick = {
                     onCaptureLogcat("BambuCamera")
                     showLogcatDialog = true
-                    logDialogTitle = "Camera Logs"
+                    logDialogTitleRes = R.string.camera_logs_title
                 },
             ) {
                 Row(
@@ -305,13 +305,13 @@ fun DebuggingSettingsScreen(
                     )
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Camera logs",
+                            text = stringResource(R.string.camera_logs),
                             style = MaterialTheme.typography.bodyLarge,
                             color = if (debugLogging) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "Filter: BambuCamera",
+                            text = stringResource(R.string.filter_camera),
                             style = MaterialTheme.typography.bodySmall,
                             color = if (debugLogging) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                         )
@@ -328,7 +328,7 @@ fun DebuggingSettingsScreen(
                 onClick = {
                     onCaptureLogcat("BambuMqtt")
                     showLogcatDialog = true
-                    logDialogTitle = "MQTT Logs"
+                    logDialogTitleRes = R.string.mqtt_logs_title
                 },
             ) {
                 Row(
@@ -345,13 +345,13 @@ fun DebuggingSettingsScreen(
                     )
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "MQTT logs",
+                            text = stringResource(R.string.mqtt_logs),
                             style = MaterialTheme.typography.bodyLarge,
                             color = if (debugLogging) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "Filter: BambuMqtt",
+                            text = stringResource(R.string.filter_mqtt),
                             style = MaterialTheme.typography.bodySmall,
                             color = if (debugLogging) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                         )
@@ -368,7 +368,7 @@ fun DebuggingSettingsScreen(
                 onClick = {
                     onCaptureLogcat("BambuFtps")
                     showLogcatDialog = true
-                    logDialogTitle = "FTPS Logs"
+                    logDialogTitleRes = R.string.ftps_logs_title
                 },
             ) {
                 Row(
@@ -385,13 +385,13 @@ fun DebuggingSettingsScreen(
                     )
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "FTPS logs",
+                            text = stringResource(R.string.ftps_logs),
                             style = MaterialTheme.typography.bodyLarge,
                             color = if (debugLogging) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "Filter: BambuFtps",
+                            text = stringResource(R.string.filter_ftps),
                             style = MaterialTheme.typography.bodySmall,
                             color = if (debugLogging) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                         )
@@ -453,7 +453,7 @@ fun DebuggingSettingsScreen(
 
         AlertDialog(
             onDismissRequest = { showLogcatDialog = false },
-            title = { Text(logDialogTitle) },
+            title = { Text(stringResource(logDialogTitleRes)) },
             text = {
                 Text(
                     text = bodyText,

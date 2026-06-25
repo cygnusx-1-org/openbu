@@ -112,7 +112,7 @@ fun PrinterSettingsScreen(
 
     if (showBgColorPicker) {
         ColorPickerDialog(
-            title = "Background color",
+            title = stringResource(R.string.background_color),
             currentColor = customBgColor,
             onColorSelected = {
                 onBgColorChanged(it)
@@ -133,7 +133,7 @@ fun PrinterSettingsScreen(
                 IconButton(onClick = onBack) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
+                        contentDescription = stringResource(R.string.cd_back),
                     )
                 }
             },
@@ -147,13 +147,13 @@ fun PrinterSettingsScreen(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Saved printer",
+                            text = stringResource(R.string.saved_printer),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onBackground,
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "This printer is saved for quick connect",
+                            text = stringResource(R.string.saved_printer_desc),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -185,13 +185,13 @@ fun PrinterSettingsScreen(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "External RTSP stream",
+                        text = stringResource(R.string.external_rtsp_stream),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onBackground,
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "Show an external RTSP camera on the dashboard",
+                        text = stringResource(R.string.external_rtsp_stream_desc),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -224,13 +224,13 @@ fun PrinterSettingsScreen(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Background color",
+                        text = stringResource(R.string.background_color),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onBackground,
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "Custom background for this printer",
+                        text = stringResource(R.string.background_color_desc),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -264,13 +264,13 @@ fun PrinterSettingsScreen(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Skip relay for this printer",
+                            text = stringResource(R.string.skip_relay_printer),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onBackground,
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "Connect directly to this printer instead of through the relay",
+                            text = stringResource(R.string.skip_relay_printer_desc),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

@@ -21,8 +21,10 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import org.cygnusx1.openbu.R
 
 private const val MIN_SCALE = 1f
 private const val MAX_SCALE = 5f
@@ -67,7 +69,7 @@ fun StreamScreen(
         if (frame != null) {
             Image(
                 bitmap = frame.asImageBitmap(),
-                contentDescription = "Camera stream",
+                contentDescription = stringResource(R.string.cd_camera_stream),
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer {
@@ -90,7 +92,7 @@ fun StreamScreen(
                 .padding(horizontal = 12.dp, vertical = 6.dp),
         ) {
             Text(
-                text = "%.1f FPS".format(fps),
+                text = stringResource(R.string.fps, fps),
                 color = Color.White,
                 fontSize = 14.sp,
             )
@@ -107,7 +109,7 @@ fun StreamScreen(
                     .padding(horizontal = 12.dp, vertical = 6.dp),
             ) {
                 Text(
-                    text = "Relayed",
+                    text = stringResource(R.string.relayed),
                     color = Color.White,
                     fontSize = 14.sp,
                 )
