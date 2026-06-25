@@ -320,6 +320,13 @@ fun ConnectionScreen(
                                     accessCode = printer.accessCode
                                     accessCodeVisible = false
                                     optionsEditedSinceAttempt = true
+                                    // A saved printer already carries its access code — connect
+                                    // straight away rather than waiting for a second button press.
+                                    // Fall back to the picker (revealed field) if the stored code
+                                    // is missing or invalid so the user can correct it.
+                                    if (printer.accessCode.length == 8) {
+                                        onConnect(printer.ip, printer.accessCode, printer.serialNumber, savePrinter, false)
+                                    }
                                 },
                                 onLongClick = { printerToDelete = printer.serialNumber },
                             )
