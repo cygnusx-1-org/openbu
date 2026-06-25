@@ -47,6 +47,15 @@ class BambuMqttClient(
     private val _lightOn = MutableStateFlow<Boolean?>(null)
     val lightOn: StateFlow<Boolean?> = _lightOn.asStateFlow()
 
+    // After a local light toggle we optimistically set _lightOn, but the printer keeps reporting the
+    // old mode in any reports already in flight (and the next periodic report) until it applies the
+    // command. Honouring those would flip the switch back ("Off" -> "On" -> "Off"), so we suppress
+    // contradicting lights_report values until the printer confirms our desired state or this window
+    // expires. (Issue #41)
+    private var pendingLightOn: Boolean? = null
+    private var pendingLightDeadlineMs: Long = 0L
+    private val pendingLightTimeoutMs = 4000L
+
     private val _connected = MutableStateFlow(false)
     val connected: StateFlow<Boolean> = _connected.asStateFlow()
 
@@ -227,6 +236,8 @@ class BambuMqttClient(
 
     fun toggleLight(on: Boolean) {
         _lightOn.value = on
+        pendingLightOn = on
+        pendingLightDeadlineMs = System.currentTimeMillis() + pendingLightTimeoutMs
         val out = socketOutput ?: return
         val ts = System.currentTimeMillis().toString()
         val json = JSONObject().apply {
@@ -556,7 +567,22 @@ class BambuMqttClient(
             if (light.optString("node") == "chamber_light") {
                 val mode = light.optString("mode")
                 if (debugLogging) Log.d(TAG, "Chamber light status: $mode")
-                _lightOn.value = mode == "on"
+                val reportedOn = mode == "on"
+                val pending = pendingLightOn
+                if (pending != null) {
+                    if (reportedOn == pending) {
+                        // Printer confirmed our toggle — stop suppressing reports.
+                        pendingLightOn = null
+                    } else if (System.currentTimeMillis() < pendingLightDeadlineMs) {
+                        // Stale report from before the command was applied; ignore it so the
+                        // switch doesn't bounce back to its old position.
+                        return
+                    } else {
+                        // Confirmation never came; trust the printer again.
+                        pendingLightOn = null
+                    }
+                }
+                _lightOn.value = reportedOn
                 return
             }
         }
@@ -860,6 +886,7 @@ class BambuMqttClient(
         _connected.value = false
         _connectionError.value = null
         _lightOn.value = null
+        pendingLightOn = null
         seenKeySignatures.clear()
         _mqttDataMessages.value = emptyList()
     }
