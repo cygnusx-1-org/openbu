@@ -302,7 +302,11 @@ fun ConnectionScreen(
                         }
                         items(savedPrinters, key = { "saved_${it.serialNumber}" }) { printer ->
                             PrinterCard(
-                                name = printer.deviceName.ifBlank { "Bambu Lab Printer" },
+                                // Fall back to the live SSDP name (e.g. "3DP-01P-271") when the
+                                // saved entry has no stored name, before the generic default.
+                                name = printer.deviceName
+                                    .ifBlank { discoveredPrinters.firstOrNull { it.serialNumber == printer.serialNumber }?.deviceName ?: "" }
+                                    .ifBlank { "Bambu Lab Printer" },
                                 detail = "${printer.ip} · ${printer.serialNumber}",
                                 icon = Icons.Filled.Bookmark,
                                 isSelected = selectedSerial == printer.serialNumber,

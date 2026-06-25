@@ -1,6 +1,7 @@
 import com.android.build.api.artifact.ArtifactTransformationRequest
 import com.android.build.api.artifact.SingleArtifact
 import com.android.build.api.variant.BuiltArtifact
+import com.android.build.api.variant.FilterConfiguration
 import java.io.FileInputStream
 import java.util.Properties
 import java.io.File
@@ -47,7 +48,8 @@ android {
     productFlavors {
         create("direct") {
             dimension = "distribution"
-            ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
+            // ABI selection is handled by the splits { abi } block; specifying
+            // abiFilters here conflicts with it.
             signingConfig = signingConfigs.getByName("release")
         }
         create("play") {
@@ -87,6 +89,18 @@ android {
         compose = true
     }
 
+    // Split the sideload APK per-ABI so each artifact ships only one libvlc.so
+    // (~40 MB each) instead of both, making each APK smaller. Ignored for AAB
+    // (bundle) builds, where Play splits per device.
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "armeabi-v7a")
+            isUniversalApk = false
+        }
+    }
+
     if (!keystorePropertiesFile.exists()) {
         logger.warn("Warning: keystore.properties file not found. Skipping signing configuration for withGPlay.")
     }
@@ -113,7 +127,13 @@ abstract class RenameApkTask : DefaultTask() {
     @TaskAction
     fun taskAction() {
         transformationRequest.get().submit(this) { builtArtifact: BuiltArtifact ->
-            val dest = outFolder.get().file("${artifactName.get()}.apk").asFile
+            // With ABI splits there's one APK per architecture; append the ABI so
+            // the artifacts don't overwrite each other under a single name.
+            val abi = builtArtifact.filters
+                .firstOrNull { it.filterType == FilterConfiguration.FilterType.ABI }
+                ?.identifier
+            val suffix = abi?.let { "-$it" } ?: ""
+            val dest = outFolder.get().file("${artifactName.get()}$suffix.apk").asFile
             File(builtArtifact.outputFile).copyTo(dest, overwrite = true)
             dest
         }

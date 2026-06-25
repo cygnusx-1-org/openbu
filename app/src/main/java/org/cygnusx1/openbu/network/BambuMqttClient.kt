@@ -37,6 +37,11 @@ class BambuMqttClient(
     private val ip: String,
     private val accessCode: String,
     private val serialNumber: String,
+    // Stable per-install MQTT client id. Reusing the same id across reconnects lets the broker
+    // evict our previous (possibly still-lingering) session per MQTT-3.1.4-2 instead of treating
+    // the reconnect as an additional client — which would trip the printer's 2-connection limit
+    // (one slot is often held by OrcaSlicer) and get the new connection dropped.
+    private val clientId: String = "openbu_${System.currentTimeMillis()}",
     private val rawSocketFactory: ((String, Int) -> Socket)? = null,
 ) {
     private val _lightOn = MutableStateFlow<Boolean?>(null)
@@ -80,7 +85,6 @@ class BambuMqttClient(
                 socketOutput = out
 
                 // MQTT CONNECT — send as single write
-                val clientId = "openbu_${System.currentTimeMillis()}"
                 val connectPacket = buildConnectPacket(clientId, "bblp", accessCode)
                 out.write(connectPacket)
                 out.flush()
