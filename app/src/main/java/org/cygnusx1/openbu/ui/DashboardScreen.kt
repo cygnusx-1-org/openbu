@@ -99,6 +99,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -268,7 +269,7 @@ fun DashboardScreen(
     if (showHmsDialog) {
         AlertDialog(
             onDismissRequest = { showHmsDialog = false },
-            title = { Text("HMS Errors") },
+            title = { Text(stringResource(R.string.hms_errors)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     printerStatus.hmsErrors.forEach { err ->
@@ -297,7 +298,7 @@ fun DashboardScreen(
                                     },
                                     contentPadding = PaddingValues(0.dp),
                                 ) {
-                                    Text("View on Bambu Wiki")
+                                    Text(stringResource(R.string.view_on_bambu_wiki))
                                 }
                             }
                         }
@@ -305,7 +306,7 @@ fun DashboardScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showHmsDialog = false }) { Text("Close") }
+                TextButton(onClick = { showHmsDialog = false }) { Text(stringResource(R.string.close)) }
             },
         )
     }
@@ -341,7 +342,7 @@ fun DashboardScreen(
                 }
                 HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
                 NavigationDrawerItem(
-                    label = { Text("Back to Connections") },
+                    label = { Text(stringResource(R.string.back_to_connections)) },
                     selected = false,
                     onClick = {
                         scope.launch { drawerState.close() }
@@ -351,7 +352,7 @@ fun DashboardScreen(
                     modifier = Modifier.padding(horizontal = 12.dp),
                 )
                 NavigationDrawerItem(
-                    label = { Text("Reconnect") },
+                    label = { Text(stringResource(R.string.reconnect)) },
                     selected = false,
                     onClick = {
                         scope.launch { drawerState.close() }
@@ -362,7 +363,7 @@ fun DashboardScreen(
                 )
                 HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
                 NavigationDrawerItem(
-                    label = { Text("Printer Settings") },
+                    label = { Text(stringResource(R.string.printer_settings)) },
                     selected = false,
                     onClick = {
                         scope.launch { drawerState.close() }
@@ -372,7 +373,7 @@ fun DashboardScreen(
                     modifier = Modifier.padding(horizontal = 12.dp),
                 )
                 NavigationDrawerItem(
-                    label = { Text("File Manager") },
+                    label = { Text(stringResource(R.string.file_manager)) },
                     selected = false,
                     onClick = {
                         scope.launch { drawerState.close() }
@@ -382,7 +383,7 @@ fun DashboardScreen(
                     modifier = Modifier.padding(horizontal = 12.dp),
                 )
                 NavigationDrawerItem(
-                    label = { Text("Timelapses") },
+                    label = { Text(stringResource(R.string.timelapses)) },
                     selected = false,
                     onClick = {
                         scope.launch { drawerState.close() }
@@ -392,7 +393,7 @@ fun DashboardScreen(
                     modifier = Modifier.padding(horizontal = 12.dp),
                 )
                 NavigationDrawerItem(
-                    label = { Text("Skip Objects") },
+                    label = { Text(stringResource(R.string.skip_objects)) },
                     selected = false,
                     onClick = {
                         scope.launch { drawerState.close() }
@@ -403,7 +404,7 @@ fun DashboardScreen(
                 )
                 HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
                 NavigationDrawerItem(
-                    label = { Text("Settings") },
+                    label = { Text(stringResource(R.string.settings)) },
                     selected = false,
                     onClick = {
                         scope.launch { drawerState.close() }
@@ -485,6 +486,14 @@ fun DashboardScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
                     )
+                    // We only make a single connection attempt, so surface a Retry button right
+                    // here once it fails rather than leaving it buried in the navigation drawer.
+                    if (!isReconnecting) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        FilledTonalButton(onClick = onReconnect) {
+                            Text(stringResource(R.string.retry))
+                        }
+                    }
                 }
                 if (mjpegCameraFailed) {
                     Spacer(modifier = Modifier.height(4.dp))
@@ -910,7 +919,7 @@ private fun PrintStatusCard(
                                     modifier = Modifier.size(18.dp),
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("Pause")
+                                Text(stringResource(R.string.pause))
                             }
                         } else {
                             FilledTonalButton(
@@ -923,7 +932,7 @@ private fun PrintStatusCard(
                                     modifier = Modifier.size(18.dp),
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("Resume")
+                                Text(stringResource(R.string.resume))
                             }
                         }
                         FilledTonalButton(
@@ -936,7 +945,7 @@ private fun PrintStatusCard(
                                 modifier = Modifier.size(18.dp),
                             )
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Stop")
+                            Text(stringResource(R.string.stop))
                         }
                     }
                 }
@@ -1234,7 +1243,7 @@ private fun FilamentEditDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Set Filament") },
+        title = { Text(stringResource(R.string.set_filament)) },
         text = {
             Column {
                 // Type dropdown
@@ -1246,7 +1255,7 @@ private fun FilamentEditDialog(
                         value = selectedType,
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Type") },
+                        label = { Text(stringResource(R.string.type)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typeExpanded) },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -1281,7 +1290,7 @@ private fun FilamentEditDialog(
                         } ?: "",
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Filament") },
+                        label = { Text(stringResource(R.string.filament)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = profileExpanded) },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -1294,7 +1303,7 @@ private fun FilamentEditDialog(
                         for (profile in filtered) {
                             DropdownMenuItem(
                                 text = {
-                                    Text("${profile.name} (${profile.nozzleTempMin}-${profile.nozzleTempMax}\u00B0C)")
+                                    Text(stringResource(R.string.filament_profile_label, profile.name, profile.nozzleTempMin, profile.nozzleTempMax))
                                 },
                                 onClick = {
                                     selectedProfile = profile
@@ -1306,7 +1315,7 @@ private fun FilamentEditDialog(
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
-                Text("Color", style = MaterialTheme.typography.labelMedium)
+                Text(stringResource(R.string.color), style = MaterialTheme.typography.labelMedium)
                 Spacer(modifier = Modifier.height(4.dp))
 
                 // Color presets
@@ -1349,8 +1358,8 @@ private fun FilamentEditDialog(
                             } catch (_: NumberFormatException) {}
                         }
                     },
-                    label = { Text("Hex color") },
-                    placeholder = { Text("#FF5722") },
+                    label = { Text(stringResource(R.string.hex_color)) },
+                    placeholder = { Text(stringResource(R.string.hint_color_deep_orange)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -1369,12 +1378,12 @@ private fun FilamentEditDialog(
                 },
                 enabled = selectedProfile != null,
             ) {
-                Text("Set")
+                Text(stringResource(R.string.set))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.cancel))
             }
         },
     )
@@ -1484,7 +1493,7 @@ private fun TemperatureDialog(
                             FilterChip(
                                 selected = targetTemp == preset,
                                 onClick = { targetTemp = preset },
-                                label = { Text("$preset°C") },
+                                label = { Text(stringResource(R.string.temperature_celsius, preset)) },
                                 trailingIcon = {
                                     Icon(
                                         Icons.Filled.Close,
@@ -1506,7 +1515,7 @@ private fun TemperatureDialog(
                                     presets.sort()
                                     savePresets()
                                 },
-                                label = { Text("Save $targetTemp°C") },
+                                label = { Text(stringResource(R.string.save_temperature_celsius, targetTemp)) },
                                 leadingIcon = {
                                     Icon(
                                         Icons.Filled.Add,
@@ -1522,12 +1531,12 @@ private fun TemperatureDialog(
         },
         confirmButton = {
             TextButton(onClick = { onConfirm(targetTemp) }) {
-                Text("Set")
+                Text(stringResource(R.string.set))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.cancel))
             }
         },
     )
@@ -1591,7 +1600,7 @@ private fun FanSpeedDialog(
                             FilterChip(
                                 selected = targetSpeed == preset,
                                 onClick = { targetSpeed = preset },
-                                label = { Text("$preset%") },
+                                label = { Text(stringResource(R.string.percent, preset)) },
                                 trailingIcon = {
                                     Icon(
                                         Icons.Filled.Close,
@@ -1613,7 +1622,7 @@ private fun FanSpeedDialog(
                                     presets.sort()
                                     savePresets()
                                 },
-                                label = { Text("Save $targetSpeed%") },
+                                label = { Text(stringResource(R.string.save_percent, targetSpeed)) },
                                 leadingIcon = {
                                     Icon(
                                         Icons.Filled.Add,
@@ -1629,12 +1638,12 @@ private fun FanSpeedDialog(
         },
         confirmButton = {
             TextButton(onClick = { onConfirm(targetSpeed) }) {
-                Text("Set")
+                Text(stringResource(R.string.set))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.cancel))
             }
         },
     )
@@ -1657,7 +1666,7 @@ private fun SpeedLevelDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Print Speed") },
+        title = { Text(stringResource(R.string.print_speed)) },
         text = {
             Column {
                 for ((level, label) in speedOptions) {
@@ -1680,12 +1689,12 @@ private fun SpeedLevelDialog(
         },
         confirmButton = {
             TextButton(onClick = { onConfirm(selectedLevel) }) {
-                Text("Set")
+                Text(stringResource(R.string.set))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.cancel))
             }
         },
     )

@@ -51,8 +51,10 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import org.cygnusx1.openbu.R
 import androidx.compose.ui.unit.sp
 import org.cygnusx1.openbu.network.PrintableObject
 
@@ -89,9 +91,9 @@ fun SkipObjectsScreen(
     if (showConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showConfirmDialog = false },
-            title = { Text("Skip Objects") },
+            title = { Text(stringResource(R.string.skip_objects)) },
             text = {
-                Text("This action is irreversible. Skipped objects cannot be restored. Skip ${selectedIds.size} object(s)?")
+                Text(stringResource(R.string.skip_objects_confirm, selectedIds.size))
             },
             confirmButton = {
                 TextButton(onClick = {
@@ -99,12 +101,12 @@ fun SkipObjectsScreen(
                     onSkipSelected(selectedIds.toList())
                     selectedIds = emptySet()
                 }) {
-                    Text("Skip")
+                    Text(stringResource(R.string.skip))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showConfirmDialog = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             },
         )
@@ -113,7 +115,7 @@ fun SkipObjectsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Skip Objects") },
+                title = { Text(stringResource(R.string.skip_objects)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -156,7 +158,7 @@ fun SkipObjectsScreen(
                                 onClearError()
                                 onLoadObjects()
                             }) {
-                                Text("Retry")
+                                Text(stringResource(R.string.retry))
                             }
                         }
                     }
@@ -273,7 +275,7 @@ fun SkipObjectsScreen(
                             .fillMaxWidth()
                             .padding(bottom = 16.dp),
                     ) {
-                        Text("Skip Selected (${selectedIds.size})")
+                        Text(stringResource(R.string.skip_selected, selectedIds.size))
                     }
                 }
             }

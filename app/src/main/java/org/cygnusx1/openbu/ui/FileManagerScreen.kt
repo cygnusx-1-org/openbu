@@ -48,8 +48,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import org.cygnusx1.openbu.R
 import org.cygnusx1.openbu.network.FtpFileEntry
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -76,19 +78,19 @@ fun FileManagerScreen(
     if (fileToDelete != null) {
         AlertDialog(
             onDismissRequest = { fileToDelete = null },
-            title = { Text("Delete file") },
-            text = { Text("Are you sure you want to delete ${fileToDelete!!.name}?") },
+            title = { Text(stringResource(R.string.delete_file)) },
+            text = { Text(stringResource(R.string.delete_file_confirm, fileToDelete!!.name)) },
             confirmButton = {
                 TextButton(onClick = {
                     onDeleteFile(fileToDelete!!)
                     fileToDelete = null
                 }) {
-                    Text("Confirm")
+                    Text(stringResource(R.string.confirm))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { fileToDelete = null }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             },
         )
@@ -112,7 +114,7 @@ fun FileManagerScreen(
             TopAppBar(
                 title = {
                     Column {
-                        Text("File Manager")
+                        Text(stringResource(R.string.file_manager))
                         Text(
                             text = currentPath,
                             maxLines = 1,

@@ -52,6 +52,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -59,6 +60,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import org.cygnusx1.openbu.R
 import androidx.compose.material.icons.filled.Bookmark
 import org.cygnusx1.openbu.network.DiscoveredPrinter
 import org.cygnusx1.openbu.network.SavedPrinter
@@ -104,14 +106,15 @@ fun ConnectionScreen(
     val canConnectManual = ip.isNotBlank() && accessCodeValid && serialValid
     val canConnect = if (manualMode) canConnectManual else canConnectAuto
 
-    // After a failed manual attempt, Retry takes over the Connect slot. Editing any
-    // connection option reverts to Connect; a fresh attempt (Connecting) re-arms Retry
-    // for the next failure.
+    // After any failed attempt, Retry takes over the Connect slot — every connection (manual
+    // entry or a selected discovered/saved printer) now makes a single attempt rather than
+    // auto-retrying. Editing any connection option reverts to Connect; a fresh attempt
+    // (Connecting) re-arms Retry for the next failure.
     var optionsEditedSinceAttempt by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(connectionState) {
         if (connectionState == ConnectionState.Connecting) optionsEditedSinceAttempt = false
     }
-    val showRetry = manualMode && connectionState == ConnectionState.Error && !optionsEditedSinceAttempt
+    val showRetry = connectionState == ConnectionState.Error && !optionsEditedSinceAttempt
 
     DisposableEffect(Unit) {
         onStartDiscovery()
@@ -123,17 +126,17 @@ fun ConnectionScreen(
             ?.deviceName?.ifBlank { null } ?: "this printer"
         AlertDialog(
             onDismissRequest = { printerToDelete = null },
-            title = { Text("Delete printer?") },
-            text = { Text("Remove $name from saved printers?") },
+            title = { Text(stringResource(R.string.delete_printer_title)) },
+            text = { Text(stringResource(R.string.remove_printer_confirm, name)) },
             confirmButton = {
                 TextButton(onClick = {
                     onDeletePrinter(serial)
                     if (selectedSerial == serial) selectedSerial = null
                     printerToDelete = null
-                }) { Text("Delete") }
+                }) { Text(stringResource(R.string.delete)) }
             },
             dismissButton = {
-                TextButton(onClick = { printerToDelete = null }) { Text("Cancel") }
+                TextButton(onClick = { printerToDelete = null }) { Text(stringResource(R.string.cancel)) }
             },
         )
     }
@@ -185,8 +188,8 @@ fun ConnectionScreen(
             OutlinedTextField(
                 value = ip,
                 onValueChange = { ip = it.trim(); optionsEditedSinceAttempt = true },
-                label = { Text("Printer IP Address") },
-                placeholder = { Text("192.168.1.100") },
+                label = { Text(stringResource(R.string.printer_ip_address)) },
+                placeholder = { Text(stringResource(R.string.hint_printer_ip)) },
                 singleLine = true,
                 colors = textFieldColors,
                 keyboardOptions = KeyboardOptions(
@@ -202,11 +205,11 @@ fun ConnectionScreen(
             OutlinedTextField(
                 value = accessCode,
                 onValueChange = { accessCode = it.trim(); optionsEditedSinceAttempt = true },
-                label = { Text("Access Code") },
+                label = { Text(stringResource(R.string.access_code)) },
                 isError = accessCode.isNotBlank() && !accessCodeValid,
                 supportingText = {
                     if (accessCode.isNotBlank() && !accessCodeValid) {
-                        Text("Must be exactly 8 characters (currently ${accessCode.length})", color = Color.Red)
+                        ErrorText(stringResource(R.string.access_code_length_error, accessCode.length))
                     }
                 },
                 singleLine = true,
@@ -233,14 +236,14 @@ fun ConnectionScreen(
             OutlinedTextField(
                 value = serialNumber,
                 onValueChange = { serialNumber = it.trim(); optionsEditedSinceAttempt = true },
-                label = { Text("Printer Serial Number") },
+                label = { Text(stringResource(R.string.printer_serial_number)) },
                 isError = serialNumber.isNotBlank() && !serialValid,
                 supportingText = {
                     if (serialNumber.isNotBlank() && !serialValid) {
                         if (!isSerialLengthValid) {
-                            Text("Must be 15 or 16 characters (currently ${serialNumber.length})", color = Color.Red)
+                            ErrorText(stringResource(R.string.serial_length_error, serialNumber.length))
                         } else {
-                            Text("Unrecognized serial number prefix.", color = Color.Red)
+                            ErrorText(stringResource(R.string.unrecognized_serial_prefix))
                         }
                     }
                 },
@@ -316,6 +319,7 @@ fun ConnectionScreen(
                                     ip = printer.ip
                                     accessCode = printer.accessCode
                                     accessCodeVisible = false
+                                    optionsEditedSinceAttempt = true
                                 },
                                 onLongClick = { printerToDelete = printer.serialNumber },
                             )
@@ -347,6 +351,7 @@ fun ConnectionScreen(
                                 selectedSerial = printer.serialNumber
                                 accessCode = onGetSavedAccessCode(printer.serialNumber)
                                 accessCodeVisible = false
+                                optionsEditedSinceAttempt = true
                             },
                         )
                     }
@@ -358,12 +363,12 @@ fun ConnectionScreen(
 
                 OutlinedTextField(
                     value = accessCode,
-                    onValueChange = { accessCode = it.trim() },
-                    label = { Text("Access Code") },
+                    onValueChange = { accessCode = it.trim(); optionsEditedSinceAttempt = true },
+                    label = { Text(stringResource(R.string.access_code)) },
                     isError = accessCode.isNotBlank() && !accessCodeValid,
                     supportingText = {
                         if (accessCode.isNotBlank() && !accessCodeValid) {
-                            Text("Must be exactly 8 characters (currently ${accessCode.length})", color = Color.Red)
+                            ErrorText(stringResource(R.string.access_code_length_error, accessCode.length))
                         }
                     },
                     singleLine = true,
@@ -429,13 +434,13 @@ fun ConnectionScreen(
         if (isConnecting) {
             CircularProgressIndicator()
         } else if (showRetry) {
-            // Manual connections don't auto-retry; Retry takes the Connect slot until the
+            // Every connection makes a single attempt; Retry takes the Connect slot until the
             // user edits a connection option, then it reverts to Connect.
             Button(
                 onClick = onRetry,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text("Retry")
+                Text(stringResource(R.string.retry))
             }
         } else {
             Button(
@@ -451,7 +456,7 @@ fun ConnectionScreen(
                 enabled = canConnect,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text("Connect")
+                Text(stringResource(R.string.connect))
             }
         }
 
@@ -464,6 +469,11 @@ fun ConnectionScreen(
             )
         }
     }
+}
+
+@Composable
+private fun ErrorText(text: String) {
+    Text(text, color = Color.Red)
 }
 
 @OptIn(ExperimentalFoundationApi::class)

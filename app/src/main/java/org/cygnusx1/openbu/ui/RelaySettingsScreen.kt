@@ -30,9 +30,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import org.cygnusx1.openbu.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,7 +56,7 @@ fun RelaySettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Remote Relay") },
+                title = { Text(stringResource(R.string.remote_relay)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
@@ -103,8 +105,8 @@ fun RelaySettingsScreen(
             OutlinedTextField(
                 value = relayHost,
                 onValueChange = onRelayHostChanged,
-                label = { Text("Relay hostname") },
-                placeholder = { Text("relay.example.com") },
+                label = { Text(stringResource(R.string.relay_hostname)) },
+                placeholder = { Text(stringResource(R.string.hint_relay_hostname)) },
                 singleLine = true,
                 enabled = relayEnabled,
                 modifier = Modifier.fillMaxWidth(),
@@ -115,8 +117,8 @@ fun RelaySettingsScreen(
             OutlinedTextField(
                 value = relayPort,
                 onValueChange = onRelayPortChanged,
-                label = { Text("Relay port") },
-                placeholder = { Text("1080") },
+                label = { Text(stringResource(R.string.relay_port)) },
+                placeholder = { Text(stringResource(R.string.hint_relay_port)) },
                 singleLine = true,
                 enabled = relayEnabled,
                 modifier = Modifier.fillMaxWidth(),
@@ -127,7 +129,7 @@ fun RelaySettingsScreen(
             OutlinedTextField(
                 value = relayUsername,
                 onValueChange = onRelayUsernameChanged,
-                label = { Text("Relay username") },
+                label = { Text(stringResource(R.string.relay_username)) },
                 singleLine = true,
                 enabled = relayEnabled,
                 modifier = Modifier.fillMaxWidth(),
@@ -138,7 +140,7 @@ fun RelaySettingsScreen(
             OutlinedTextField(
                 value = relayPassword,
                 onValueChange = onRelayPasswordChanged,
-                label = { Text("Relay password") },
+                label = { Text(stringResource(R.string.relay_password)) },
                 singleLine = true,
                 enabled = relayEnabled,
                 modifier = Modifier.fillMaxWidth(),

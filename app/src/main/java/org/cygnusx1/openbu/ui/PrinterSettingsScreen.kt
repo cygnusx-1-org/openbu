@@ -40,7 +40,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import org.cygnusx1.openbu.R
 
 private val PresetColors = listOf(
     "Red" to Color(0xFFF44336),
@@ -90,19 +92,19 @@ fun PrinterSettingsScreen(
     if (showDeleteConfirmation) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirmation = false },
-            title = { Text("Remove saved printer?") },
-            text = { Text("This printer will no longer appear in your saved printers list.") },
+            title = { Text(stringResource(R.string.remove_saved_printer_title)) },
+            text = { Text(stringResource(R.string.remove_saved_printer_message)) },
             confirmButton = {
                 TextButton(onClick = {
                     showDeleteConfirmation = false
                     onDeletePrinter()
                 }) {
-                    Text("Remove")
+                    Text(stringResource(R.string.remove))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteConfirmation = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             },
         )
@@ -126,7 +128,7 @@ fun PrinterSettingsScreen(
             .background(MaterialTheme.colorScheme.background),
     ) {
         TopAppBar(
-            title = { Text("Printer Settings") },
+            title = { Text(stringResource(R.string.printer_settings)) },
             navigationIcon = {
                 IconButton(onClick = onBack) {
                     Icon(
@@ -157,7 +159,7 @@ fun PrinterSettingsScreen(
                         )
                     }
                     TextButton(onClick = { showDeleteConfirmation = true }) {
-                        Text("Remove")
+                        Text(stringResource(R.string.remove))
                     }
                 }
 
@@ -168,8 +170,8 @@ fun PrinterSettingsScreen(
             OutlinedTextField(
                 value = customPrinterName,
                 onValueChange = onCustomPrinterNameChanged,
-                label = { Text("Printer name") },
-                placeholder = { Text("My Printer") },
+                label = { Text(stringResource(R.string.printer_name)) },
+                placeholder = { Text(stringResource(R.string.hint_printer_name)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -206,8 +208,8 @@ fun PrinterSettingsScreen(
             OutlinedTextField(
                 value = rtspUrl,
                 onValueChange = onRtspUrlChanged,
-                label = { Text("RTSP URL") },
-                placeholder = { Text("rtsp://192.168.1.100:8554/stream") },
+                label = { Text(stringResource(R.string.rtsp_url)) },
+                placeholder = { Text(stringResource(R.string.hint_rtsp_url)) },
                 singleLine = true,
                 enabled = rtspEnabled,
                 modifier = Modifier.fillMaxWidth(),
@@ -244,11 +246,11 @@ fun PrinterSettingsScreen(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     TextButton(onClick = { onBgColorChanged(null) }) {
-                        Text("Reset")
+                        Text(stringResource(R.string.reset))
                     }
                 } else {
                     Button(onClick = { showBgColorPicker = true }) {
-                        Text("Pick")
+                        Text(stringResource(R.string.pick))
                     }
                 }
             }
@@ -342,8 +344,8 @@ private fun ColorPickerDialog(
                         val parsed = parseHexColor(input)
                         if (parsed != null) selectedColor = parsed
                     },
-                    label = { Text("Hex color") },
-                    placeholder = { Text("#FF5722") },
+                    label = { Text(stringResource(R.string.hex_color)) },
+                    placeholder = { Text(stringResource(R.string.hint_color_deep_orange)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -354,12 +356,12 @@ private fun ColorPickerDialog(
                 onClick = { selectedColor?.let { onColorSelected(it) } },
                 enabled = selectedColor != null,
             ) {
-                Text("Apply")
+                Text(stringResource(R.string.apply))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.cancel))
             }
         },
     )

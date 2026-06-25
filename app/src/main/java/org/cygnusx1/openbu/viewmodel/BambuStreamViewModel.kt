@@ -241,17 +241,15 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
     private var reconnectJob: Job? = null
     private var reconnectRetryCount = 0
     private val maxReconnectRetries = 5
-    // Manual-entry connections don't auto-retry: a typo'd IP/serial should fail on the
-    // single attempt and wait for the user to fix it and tap Retry, rather than looping
-    // on its own. Auto-discovered/saved printers keep the full retry count.
-    //
-    // This no-retry rule is strictly a CONNECTION-SCREEN concern: it only applies while the
-    // printer is still unverified. Once we've had a verified connection (hasLastConnectedPrinter),
-    // we're in a DASHBOARD session — a drop or a stale connection on resume must always auto-retry
-    // with the full count, independent of how the session was originally established.
+    // No connection path auto-retries any more: every attempt — manual entry, auto-discovered/
+    // saved printer, or a dashboard drop/stale-socket reconnect — makes a single attempt and then
+    // surfaces a Retry button (ConnectionScreen) or Reconnect button (Dashboard) for the user to
+    // tap, rather than looping on its own. This is the same one-shot behaviour manual entry always
+    // had; it now applies everywhere. (maxReconnectRetries is still used for the camera-only MJPEG
+    // substream retry, which is independent of the MQTT connection.)
     private var isManualConnection = false
     private val effectiveMaxRetries: Int
-        get() = if (isManualConnection && !_hasLastConnectedPrinter.value) 0 else maxReconnectRetries
+        get() = 0
     private var mjpegRetryCount = 0
     private var mjpegRetryJob: Job? = null
 
@@ -645,9 +643,14 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
                     if (error != null && !userDisconnected) {
                         Log.d("AutoReconnect", "MQTT error: $error")
                         if (error == "EHOSTUNREACH") {
+                            // "EHOSTUNREACH" is an internal signal, not user-facing text.
+                            // Show the same friendly message setNoRouteToHost uses on the
+                            // dashboard, since this path routes to the ConnectionScreen.
                             setNoRouteToHost(ip)
+                            _errorMessage.value = noRouteToHostMessage(ip)
+                        } else {
+                            _errorMessage.value = error
                         }
-                        _errorMessage.value = error
                         _connectionState.value = ConnectionState.Error
                         _hasLastConnectedPrinter.value = false
                         cleanupConnections()
@@ -1640,8 +1643,11 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         cleanupConnections()
     }
 
+    private fun noRouteToHostMessage(ip: String): String =
+        "No route to host, $ip.\nPrinter off or disconnected from WiFi?"
+
     private fun setNoRouteToHost(ip: String) {
-        _noRouteToHost.value = "No route to host, $ip.\nPrinter off or disconnected from WiFi?"
+        _noRouteToHost.value = noRouteToHostMessage(ip)
     }
 
     private fun Exception.isNoRouteToHost(): Boolean =

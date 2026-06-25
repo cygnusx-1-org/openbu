@@ -1,4 +1,104 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Openbu</string>
+
+    <!-- Common actions -->
+    <string name="ok">OK</string>
+    <string name="cancel">Cancel</string>
+    <string name="close">Close</string>
+    <string name="confirm">Confirm</string>
+    <string name="delete">Delete</string>
+    <string name="remove">Remove</string>
+    <string name="reset">Reset</string>
+    <string name="apply">Apply</string>
+    <string name="set">Set</string>
+    <string name="pick">Pick</string>
+    <string name="skip">Skip</string>
+    <string name="retry">Retry</string>
+    <string name="connect">Connect</string>
+    <string name="reconnect">Reconnect</string>
+    <string name="stop">Stop</string>
+    <string name="pause">Pause</string>
+    <string name="resume">Resume</string>
+
+    <!-- Screen titles &amp; section labels -->
+    <string name="settings">Settings</string>
+    <string name="general">General</string>
+    <string name="debug">Debug</string>
+    <string name="printer_settings">Printer Settings</string>
+    <string name="file_manager">File Manager</string>
+    <string name="timelapses">Timelapses</string>
+    <string name="skip_objects">Skip Objects</string>
+    <string name="remote_relay">Remote Relay</string>
+    <string name="about_openbu">About Openbu</string>
+    <string name="hms_errors">HMS Errors</string>
+    <string name="set_filament">Set Filament</string>
+    <string name="print_speed">Print Speed</string>
+    <string name="back_to_connections">Back to Connections</string>
+    <string name="view_on_bambu_wiki">View on Bambu Wiki</string>
+
+    <!-- Input field labels -->
+    <string name="access_code">Access Code</string>
+    <string name="printer_ip_address">Printer IP Address</string>
+    <string name="printer_name">Printer name</string>
+    <string name="printer_serial_number">Printer Serial Number</string>
+    <string name="rtsp_url">RTSP URL</string>
+    <string name="relay_hostname">Relay hostname</string>
+    <string name="relay_port">Relay port</string>
+    <string name="relay_username">Relay username</string>
+    <string name="relay_password">Relay password</string>
+    <string name="hex_color">Hex color</string>
+    <string name="color">Color</string>
+    <string name="type">Type</string>
+    <string name="filament">Filament</string>
+
+    <!-- Input placeholders / example hints -->
+    <string name="hint_printer_ip">192.168.1.100</string>
+    <string name="hint_printer_name">My Printer</string>
+    <string name="hint_rtsp_url">rtsp://192.168.1.100:8554/stream</string>
+    <string name="hint_relay_hostname">relay.example.com</string>
+    <string name="hint_relay_port">1080</string>
+    <string name="hint_color_deep_orange">#FF5722</string>
+
+    <!-- Dialog titles &amp; messages -->
+    <string name="delete_printer_title">Delete printer?</string>
+    <string name="delete_file">Delete file</string>
+    <string name="remove_saved_printer_title">Remove saved printer?</string>
+    <string name="remove_saved_printer_message">This printer will no longer appear in your saved printers list.</string>
+    <string name="unrecognized_serial_prefix">Unrecognized serial number prefix.</string>
+
+    <!-- Formatted strings -->
+    <string name="remove_printer_confirm">Remove %1$s from saved printers?</string>
+    <string name="access_code_length_error">Must be exactly 8 characters (currently %1$d)</string>
+    <string name="serial_length_error">Must be 15 or 16 characters (currently %1$d)</string>
+    <string name="delete_file_confirm">Are you sure you want to delete %1$s?</string>
+    <string name="version">Version %1$s</string>
+    <string name="unique_message_structures">%1$d unique message structure(s)</string>
+    <string name="skip_objects_confirm">This action is irreversible. Skipped objects cannot be restored. Skip %1$d object(s)?</string>
+    <string name="skip_selected">Skip Selected (%1$d)</string>
+    <string name="filament_profile_label">%1$s (%2$d-%3$d°C)</string>
+    <string name="temperature_celsius">%1$d°C</string>
+    <string name="save_temperature_celsius">Save %1$d°C</string>
+    <string name="percent">%1$d%%</string>
+    <string name="save_percent">Save %1$d%%</string>
+
+    <!-- Content descriptions -->
+    <string name="cd_menu">Menu</string>
+    <string name="cd_back">Back</string>
+    <string name="cd_about">About</string>
+    <string name="cd_camera_preview">Camera preview</string>
+    <string name="cd_camera_stream">Camera stream</string>
+    <string name="cd_build_plate">Build plate</string>
+    <string name="cd_video">Video</string>
+    <string name="cd_upload_file">Upload file</string>
+    <string name="cd_cancel_transfer">Cancel transfer</string>
+    <string name="cd_cancel_download">Cancel download</string>
+    <string name="cd_parent_directory">Parent directory</string>
+    <string name="cd_remove_preset">Remove preset</string>
+    <string name="cd_save_preset">Save preset</string>
+
+    <!-- Connection status messages -->
+    <string name="connection_failed">Connection to printer failed</string>
+    <string name="could_not_connect">Couldn\'t connect to the printer.\n\nCheck that the IP address and serial number are correct. Make sure LAN Mode and Developer Mode are both enabled in the printer\'s network settings.</string>
+    <string name="no_route_to_host">No route to host, %1$s.\nPrinter off or disconnected from WiFi?</string>
 </resources>

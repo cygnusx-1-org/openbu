@@ -37,9 +37,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import org.cygnusx1.openbu.R
 
 private const val REDACTED = "REDACTED"
 
@@ -85,7 +87,7 @@ fun DebuggingSettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Debug") },
+                title = { Text(stringResource(R.string.debug)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
@@ -409,7 +411,7 @@ fun DebuggingSettingsScreen(
 
         AlertDialog(
             onDismissRequest = { showMqttDataDialog = false },
-            title = { Text("${mqttDataMessages.size} unique message structure(s)") },
+            title = { Text(stringResource(R.string.unique_message_structures, mqttDataMessages.size)) },
             text = {
                 Text(
                     text = bodyText,
@@ -435,7 +437,7 @@ fun DebuggingSettingsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showMqttDataDialog = false }) {
-                    Text("Close")
+                    Text(stringResource(R.string.close))
                 }
             },
         )
@@ -469,7 +471,7 @@ fun DebuggingSettingsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showLogcatDialog = false }) {
-                    Text("Close")
+                    Text(stringResource(R.string.close))
                 }
             },
         )
