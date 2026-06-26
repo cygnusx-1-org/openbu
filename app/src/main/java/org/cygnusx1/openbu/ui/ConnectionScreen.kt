@@ -15,13 +15,14 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -72,11 +73,10 @@ fun ConnectionScreen(
     errorMessage: String?,
     discoveredPrinters: List<DiscoveredPrinter>,
     savedPrinters: List<SavedPrinter>,
-    savePrinterDefault: Boolean = true,
     onStartDiscovery: () -> Unit,
     onStopDiscovery: () -> Unit,
     onGetSavedAccessCode: (serialNumber: String) -> String,
-    onConnect: (ip: String, accessCode: String, serialNumber: String, savePrinter: Boolean, manualMode: Boolean) -> Unit,
+    onConnect: (ip: String, accessCode: String, serialNumber: String, manualMode: Boolean) -> Unit,
     onRetry: () -> Unit = {},
     onDeletePrinter: (serialNumber: String) -> Unit = {},
 ) {
@@ -84,7 +84,6 @@ fun ConnectionScreen(
     var accessCode by rememberSaveable { mutableStateOf("") }
     var accessCodeVisible by rememberSaveable { mutableStateOf(false) }
     var serialNumber by rememberSaveable { mutableStateOf("") }
-    var savePrinter by rememberSaveable { mutableStateOf(savePrinterDefault) }
     var manualMode by rememberSaveable { mutableStateOf(false) }
     var selectedSerial by rememberSaveable { mutableStateOf<String?>(null) }
     var printerToDelete by rememberSaveable { mutableStateOf<String?>(null) }
@@ -146,6 +145,8 @@ fun ConnectionScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .windowInsetsPadding(WindowInsets.statusBars)
+            .imePadding()
+            .verticalScroll(rememberScrollState())
             .padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -219,7 +220,7 @@ fun ConnectionScreen(
                     IconButton(onClick = { accessCodeVisible = !accessCodeVisible }) {
                         Icon(
                             imageVector = if (accessCodeVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
-                            contentDescription = if (accessCodeVisible) "Hide access code" else "Show access code",
+                            contentDescription = if (accessCodeVisible) stringResource(R.string.cd_hide_access_code) else stringResource(R.string.cd_show_access_code),
                         )
                     }
                 },
@@ -256,7 +257,7 @@ fun ConnectionScreen(
                 keyboardActions = KeyboardActions(
                     onDone = {
                         if (canConnect) {
-                            onConnect(ip, accessCode, serialNumber, savePrinter, true)
+                            onConnect(ip, accessCode, serialNumber, true)
                         }
                     },
                 ),
@@ -288,28 +289,24 @@ fun ConnectionScreen(
                     )
                 }
             } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f, fill = false),
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     if (savedPrinters.isNotEmpty()) {
-                        item(key = "header_saved") {
-                            Text(
-                                text = stringResource(R.string.saved_printers),
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(vertical = 4.dp),
-                            )
-                        }
-                        items(savedPrinters, key = { "saved_${it.serialNumber}" }) { printer ->
+                        Text(
+                            text = stringResource(R.string.saved_printers),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(vertical = 4.dp),
+                        )
+                        savedPrinters.forEach { printer ->
                             PrinterCard(
                                 // Fall back to the live SSDP name (e.g. "3DP-01P-271") when the
                                 // saved entry has no stored name, before the generic default.
                                 name = printer.deviceName
                                     .ifBlank { discoveredPrinters.firstOrNull { it.serialNumber == printer.serialNumber }?.deviceName ?: "" }
-                                    .ifBlank { "Bambu Lab Printer" },
+                                    .ifBlank { stringResource(R.string.default_printer_name) },
                                 detail = "${printer.ip} · ${printer.serialNumber}",
                                 icon = Icons.Filled.Bookmark,
                                 isSelected = selectedSerial == printer.serialNumber,
@@ -325,7 +322,7 @@ fun ConnectionScreen(
                                     // Fall back to the picker (revealed field) if the stored code
                                     // is missing or invalid so the user can correct it.
                                     if (printer.accessCode.length == 8) {
-                                        onConnect(printer.ip, printer.accessCode, printer.serialNumber, savePrinter, false)
+                                        onConnect(printer.ip, printer.accessCode, printer.serialNumber, false)
                                     }
                                 },
                                 onLongClick = { printerToDelete = printer.serialNumber },
@@ -334,22 +331,17 @@ fun ConnectionScreen(
                     }
 
                     if (filteredDiscovered.isNotEmpty()) {
-                        item(key = "header_discovered") {
-                            Text(
-                                text = stringResource(R.string.discovered_printers),
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(top = if (savedPrinters.isNotEmpty()) 8.dp else 0.dp, bottom = 4.dp),
-                            )
-                        }
+                        Text(
+                            text = stringResource(R.string.discovered_printers),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = if (savedPrinters.isNotEmpty()) 8.dp else 0.dp, bottom = 4.dp),
+                        )
                     }
 
-                    items(
-                        filteredDiscovered.sortedByDescending { it.lastSeen },
-                        key = { "disc_${it.serialNumber}" },
-                    ) { printer ->
+                    filteredDiscovered.sortedByDescending { it.lastSeen }.forEach { printer ->
                         PrinterCard(
-                            name = printer.deviceName.ifBlank { printer.modelCode.ifBlank { "Bambu Lab Printer" } },
+                            name = printer.deviceName.ifBlank { printer.modelCode.ifBlank { stringResource(R.string.default_printer_name) } },
                             detail = "${printer.ip} · ${printer.serialNumber}",
                             icon = Icons.Filled.Print,
                             isSelected = selectedSerial == printer.serialNumber,
@@ -385,7 +377,7 @@ fun ConnectionScreen(
                         IconButton(onClick = { accessCodeVisible = !accessCodeVisible }) {
                             Icon(
                                 imageVector = if (accessCodeVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
-                                contentDescription = if (accessCodeVisible) "Hide access code" else "Show access code",
+                                contentDescription = if (accessCodeVisible) stringResource(R.string.cd_hide_access_code) else stringResource(R.string.cd_show_access_code),
                             )
                         }
                     },
@@ -397,9 +389,9 @@ fun ConnectionScreen(
                         onDone = {
                             if (canConnect) {
                                 if (selectedSavedPrinter != null) {
-                                    onConnect(selectedSavedPrinter.ip, accessCode, selectedSavedPrinter.serialNumber, savePrinter, false)
+                                    onConnect(selectedSavedPrinter.ip, accessCode, selectedSavedPrinter.serialNumber, false)
                                 } else if (selectedPrinter != null) {
-                                    onConnect(selectedPrinter.ip, accessCode, selectedPrinter.serialNumber, savePrinter, false)
+                                    onConnect(selectedPrinter.ip, accessCode, selectedPrinter.serialNumber, false)
                                 }
                             }
                         },
@@ -408,32 +400,6 @@ fun ConnectionScreen(
                     enabled = !isConnecting,
                 )
             }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = stringResource(R.string.save_printer),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onBackground,
-                )
-                Text(
-                    text = stringResource(R.string.save_printer_desc),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Switch(
-                checked = savePrinter,
-                onCheckedChange = { savePrinter = it },
-                enabled = !isConnecting,
-            )
         }
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -453,11 +419,11 @@ fun ConnectionScreen(
             Button(
                 onClick = {
                     if (manualMode) {
-                        onConnect(ip, accessCode, serialNumber, savePrinter, true)
+                        onConnect(ip, accessCode, serialNumber, true)
                     } else if (selectedSavedPrinter != null) {
-                        onConnect(selectedSavedPrinter.ip, accessCode, selectedSavedPrinter.serialNumber, savePrinter, false)
+                        onConnect(selectedSavedPrinter.ip, accessCode, selectedSavedPrinter.serialNumber, false)
                     } else if (selectedPrinter != null) {
-                        onConnect(selectedPrinter.ip, accessCode, selectedPrinter.serialNumber, savePrinter, false)
+                        onConnect(selectedPrinter.ip, accessCode, selectedPrinter.serialNumber, false)
                     }
                 },
                 enabled = canConnect,

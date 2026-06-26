@@ -5,16 +5,17 @@ enum class PrinterSeries(
     val usesMjpegCamera: Boolean,
     val maxNozzleTemp: Int,
     val maxBedTemp: Int,
+    val hasChamberTemp: Boolean,  // has an active chamber temperature sensor
     val wikiTag: String,  // tag used in hms-errors.json / Bambu wiki URLs
 ) {
-    P1(isEnclosed = true,  usesMjpegCamera = true,  maxNozzleTemp = 300, maxBedTemp = 100, wikiTag = "x1"),
-    P2(isEnclosed = true,  usesMjpegCamera = false, maxNozzleTemp = 300, maxBedTemp = 110, wikiTag = "p2s"),
-    A1(isEnclosed = false, usesMjpegCamera = true,  maxNozzleTemp = 300, maxBedTemp = 100, wikiTag = "a1"),
-    A1_MINI(isEnclosed = false, usesMjpegCamera = true,  maxNozzleTemp = 300, maxBedTemp = 80,  wikiTag = "a1-mini"),
-    H2(isEnclosed = true,  usesMjpegCamera = false, maxNozzleTemp = 350, maxBedTemp = 120, wikiTag = "h2"),
-    X1(isEnclosed = true,  usesMjpegCamera = false, maxNozzleTemp = 300, maxBedTemp = 110, wikiTag = "x1"),
-    X1E(isEnclosed = true, usesMjpegCamera = false, maxNozzleTemp = 320, maxBedTemp = 110, wikiTag = "x1"),
-    UNKNOWN(isEnclosed = true, usesMjpegCamera = false, maxNozzleTemp = 300, maxBedTemp = 110, wikiTag = ""),
+    P1(isEnclosed = true,  usesMjpegCamera = true,  maxNozzleTemp = 300, maxBedTemp = 100, hasChamberTemp = false, wikiTag = "x1"),
+    P2(isEnclosed = true,  usesMjpegCamera = false, maxNozzleTemp = 300, maxBedTemp = 110, hasChamberTemp = true,  wikiTag = "p2s"),
+    A1(isEnclosed = false, usesMjpegCamera = true,  maxNozzleTemp = 300, maxBedTemp = 100, hasChamberTemp = false, wikiTag = "a1"),
+    A1_MINI(isEnclosed = false, usesMjpegCamera = true,  maxNozzleTemp = 300, maxBedTemp = 80,  hasChamberTemp = false, wikiTag = "a1-mini"),
+    H2(isEnclosed = true,  usesMjpegCamera = false, maxNozzleTemp = 350, maxBedTemp = 120, hasChamberTemp = true,  wikiTag = "h2"),
+    X1(isEnclosed = true,  usesMjpegCamera = false, maxNozzleTemp = 300, maxBedTemp = 110, hasChamberTemp = true,  wikiTag = "x1"),
+    X1E(isEnclosed = true, usesMjpegCamera = false, maxNozzleTemp = 320, maxBedTemp = 110, hasChamberTemp = true,  wikiTag = "x1"),
+    UNKNOWN(isEnclosed = true, usesMjpegCamera = false, maxNozzleTemp = 300, maxBedTemp = 110, hasChamberTemp = false, wikiTag = ""),
 }
 
 private val SERIAL_PREFIX_MAP = mapOf(

@@ -116,7 +116,6 @@ class MainActivity : ComponentActivity() {
                 val isMqttConnected by viewModel.isMqttConnected.collectAsState()
                 val printerStatus by viewModel.printerStatus.collectAsState()
                 val showMainStream by viewModel.showMainStream.collectAsState()
-                val autoSavePrinter by viewModel.autoSavePrinter.collectAsState()
                 val internalRtspUrl by viewModel.internalRtspUrl.collectAsState()
                 val rtspEnabled by viewModel.rtspEnabled.collectAsState()
                 val rtspUrl by viewModel.rtspUrl.collectAsState()
@@ -125,6 +124,7 @@ class MainActivity : ComponentActivity() {
                 val redactLogs by viewModel.redactLogs.collectAsState()
                 val discoveredPrinters by viewModel.discoveredPrinters.collectAsState()
                 val savedPrinters by viewModel.savedPrinters.collectAsState()
+                val mockPrinters by viewModel.mockPrinters.collectAsState()
                 val connectedSerialNumber by viewModel.connectedSerialNumber.collectAsState()
                 val isReconnecting by viewModel.isReconnecting.collectAsState()
                 val mjpegCameraFailed by viewModel.mjpegCameraFailed.collectAsState()
@@ -420,8 +420,6 @@ class MainActivity : ComponentActivity() {
                         GeneralSettingsScreen(
                             showMainStream = showMainStream,
                             onShowMainStreamChanged = { viewModel.setShowMainStream(it) },
-                            autoSavePrinter = autoSavePrinter,
-                            onAutoSavePrinterChanged = { viewModel.setAutoSavePrinter(it) },
                             forceDarkMode = forceDarkMode,
                             onForceDarkModeChanged = { viewModel.setForceDarkMode(it) },
                             useVlcForRtsp = useVlcForRtsp,
@@ -580,6 +578,8 @@ class MainActivity : ComponentActivity() {
                             printerStatus = printerStatus,
                             printerName = printerName,
                             serialNumber = connectedSerialNumber,
+                            availablePrinters = savedPrinters + mockPrinters,
+                            onSelectPrinter = { printer -> viewModel.switchToPrinter(printer) },
                             showMainStream = showMainStream,
                             internalRtspPlayer = internalRtspPlayer,
                             rtspPlayer = rtspPlayer,
@@ -654,12 +654,11 @@ class MainActivity : ComponentActivity() {
                             errorMessage = errorMessage,
                             discoveredPrinters = discoveredPrinters,
                             savedPrinters = savedPrinters,
-                            savePrinterDefault = autoSavePrinter,
                             onStartDiscovery = { viewModel.startDiscovery() },
                             onStopDiscovery = { viewModel.stopDiscovery() },
                             onGetSavedAccessCode = { serial -> viewModel.getSavedAccessCode(serial) },
-                            onConnect = { ip, accessCode, serialNumber, savePrinter, manualMode ->
-                                viewModel.connect(ip, accessCode, serialNumber, savePrinter, manualMode)
+                            onConnect = { ip, accessCode, serialNumber, manualMode ->
+                                viewModel.connect(ip, accessCode, serialNumber, manualMode)
                             },
                             onRetry = { viewModel.reconnect() },
                             onDeletePrinter = { serial ->

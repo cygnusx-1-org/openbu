@@ -113,7 +113,7 @@ fun TimelapseScreen(
                     IconButton(onClick = onToggleSortOrder) {
                         Icon(
                             imageVector = if (newestFirst) Icons.Filled.ArrowDownward else Icons.Filled.ArrowUpward,
-                            contentDescription = if (newestFirst) "Oldest first" else "Newest first",
+                            contentDescription = if (newestFirst) stringResource(R.string.cd_sort_oldest_first) else stringResource(R.string.cd_sort_newest_first),
                         )
                     }
                 },

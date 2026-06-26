@@ -279,7 +279,7 @@ private fun FileEntryRow(
     ) {
         Icon(
             imageVector = if (entry.isDirectory) Icons.Filled.Folder else Icons.Filled.Description,
-            contentDescription = if (entry.isDirectory) "Folder" else "File",
+            contentDescription = if (entry.isDirectory) stringResource(R.string.cd_folder) else stringResource(R.string.cd_file),
             modifier = Modifier.size(24.dp),
             tint = if (entry.isDirectory) {
                 MaterialTheme.colorScheme.primary

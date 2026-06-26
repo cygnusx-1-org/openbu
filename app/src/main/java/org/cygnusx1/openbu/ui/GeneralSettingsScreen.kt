@@ -32,8 +32,6 @@ import org.cygnusx1.openbu.R
 fun GeneralSettingsScreen(
     showMainStream: Boolean,
     onShowMainStreamChanged: (Boolean) -> Unit,
-    autoSavePrinter: Boolean,
-    onAutoSavePrinterChanged: (Boolean) -> Unit,
     forceDarkMode: Boolean,
     onForceDarkModeChanged: (Boolean) -> Unit,
     useVlcForRtsp: Boolean,
@@ -84,32 +82,6 @@ fun GeneralSettingsScreen(
                 Switch(
                     checked = showMainStream,
                     onCheckedChange = onShowMainStreamChanged,
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Auto-save printers
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(R.string.auto_save_printers),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onBackground,
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = stringResource(R.string.auto_save_printers_desc),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Switch(
-                    checked = autoSavePrinter,
-                    onCheckedChange = onAutoSavePrinterChanged,
                 )
             }
 

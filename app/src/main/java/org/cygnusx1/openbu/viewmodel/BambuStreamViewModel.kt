@@ -95,9 +95,6 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
     private val _noRouteToHost = MutableStateFlow<String?>(null)
     val noRouteToHost: StateFlow<String?> = _noRouteToHost.asStateFlow()
 
-    private val _autoSavePrinter = MutableStateFlow(true)
-    val autoSavePrinter: StateFlow<Boolean> = _autoSavePrinter.asStateFlow()
-
     private val _redactLogs = MutableStateFlow(true)
     val redactLogs: StateFlow<Boolean> = _redactLogs.asStateFlow()
 
@@ -153,6 +150,12 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
 
     private val _savedPrinters = MutableStateFlow<List<SavedPrinter>>(emptyList())
     val savedPrinters: StateFlow<List<SavedPrinter>> = _savedPrinters.asStateFlow()
+
+    // Mock printers connected to this session. Never persisted (mocks aren't saved),
+    // but kept in memory so the dashboard picker can switch between them and saved
+    // printers. Cleared when the ViewModel is recreated.
+    private val _mockPrinters = MutableStateFlow<List<SavedPrinter>>(emptyList())
+    val mockPrinters: StateFlow<List<SavedPrinter>> = _mockPrinters.asStateFlow()
 
     private val ssdpClient = BambuSsdpClient()
     val discoveredPrinters: StateFlow<List<DiscoveredPrinter>> = ssdpClient.discoveredPrinters
@@ -236,7 +239,6 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
     private var timelapseDownloadClient: BambuFtpsClient? = null
     private var timelapseThumbnailJob: Job? = null
     @Volatile private var timelapseDownloadCancelled = false
-    private var pendingSavePrinter = false
     private var userDisconnected = false
     private var reconnectJob: Job? = null
     private var reconnectRetryCount = 0
@@ -337,7 +339,6 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         _showMainStream.value = prefs.getBoolean("show_main_stream", true)
         _forceDarkMode.value = prefs.getBoolean("force_dark_mode", false)
         _debugLogging.value = prefs.getBoolean("debug_logging", false)
-        _autoSavePrinter.value = prefs.getBoolean("auto_save_printer", true)
         _redactLogs.value = prefs.getBoolean("redact_logs", true)
         _relayEnabled.value = prefs.getBoolean("relay_enabled", false)
         _relayHost.value = prefs.getString("relay_host", "") ?: ""
@@ -436,11 +437,6 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         client?.debugLogging = enabled
     }
 
-    fun setAutoSavePrinter(enabled: Boolean) {
-        _autoSavePrinter.value = enabled
-        prefs.edit().putBoolean("auto_save_printer", enabled).apply()
-    }
-
     fun setRedactLogs(enabled: Boolean) {
         _redactLogs.value = enabled
         prefs.edit().putBoolean("redact_logs", enabled).apply()
@@ -487,7 +483,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
     private fun usesMjpegCamera(serial: String): Boolean =
         printerSeriesFromSerial(serial).usesMjpegCamera
 
-    fun connect(ip: String, accessCode: String, serialNumber: String, savePrinter: Boolean = false, manualMode: Boolean = false) {
+    fun connect(ip: String, accessCode: String, serialNumber: String, manualMode: Boolean = false) {
         Log.d("AutoReconnect", "connect() called: ip=$ip, serial=$serialNumber, state=${_connectionState.value}, userDisconnected=$userDisconnected, manualMode=$manualMode")
         isManualConnection = manualMode
         if (_connectionState.value == ConnectionState.Connecting ||
@@ -513,7 +509,6 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
             }
         }
 
-        pendingSavePrinter = savePrinter
         userDisconnected = false
         reconnectJob?.cancel()
         reconnectJob = null
@@ -683,9 +678,15 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
                 // A camera frame / CONNACK only proves IP + access code; a report proves the
                 // serial's subscription is valid (a wrong serial gets dropped, no report).
                 mqtt.reportReceived.collect { received ->
-                    if (received && pendingSavePrinter) {
-                        pendingSavePrinter = false
-                        saveCurrentPrinter()
+                    if (received) {
+                        // Save real printers once their MQTT data connection succeeds. Mock
+                        // printers (labelled via the "mock" report field) are never saved, but
+                        // are tracked in memory so the picker can switch between them.
+                        if (mqtt.printerStatus.value.isMock) {
+                            recordMockPrinter()
+                        } else {
+                            saveCurrentPrinter()
+                        }
                     }
                 }
             }
@@ -1013,7 +1014,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
             delay(3000)
             _connectionState.value = ConnectionState.Disconnected
             _errorMessage.value = null
-            connect(ip, code, serial, savePrinter = pendingSavePrinter, manualMode = isManualConnection)
+            connect(ip, code, serial, manualMode = isManualConnection)
         }
     }
 
@@ -1033,7 +1034,32 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         _isReconnecting.value = true
         _connectionState.value = ConnectionState.Disconnected
         _errorMessage.value = null
-        connect(ip, code, serial, savePrinter = pendingSavePrinter, manualMode = isManualConnection)
+        connect(ip, code, serial, manualMode = isManualConnection)
+    }
+
+    /**
+     * Switch the active session to a different saved printer. Mirrors [reconnect]
+     * — tears the current connection down and rebuilds against the new printer's
+     * credentials without bouncing back to the connection screen.
+     */
+    fun switchToPrinter(printer: SavedPrinter) {
+        if (printer.serialNumber == _connectedSerialNumber.value &&
+            _connectionState.value == ConnectionState.Connected
+        ) return
+        val code = printer.accessCode.ifBlank { getSavedAccessCode(printer.serialNumber) }
+        if (printer.ip.isBlank() || code.isBlank()) return
+        reconnectJob?.cancel()
+        reconnectJob = null
+        cleanupConnections()
+        _rtspReconnectKey.value++
+        reconnectRetryCount = 0
+        mjpegRetryCount = 0
+        _mjpegCameraFailed.value = false
+        _noRouteToHost.value = null
+        _isReconnecting.value = true
+        _connectionState.value = ConnectionState.Disconnected
+        _errorMessage.value = null
+        connect(printer.ip, code, printer.serialNumber, manualMode = true)
     }
 
     fun retryIfNeeded() {
@@ -1093,7 +1119,6 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
     fun disconnect() {
         Log.d("AutoReconnect", "disconnect() called")
         userDisconnected = true
-        pendingSavePrinter = false
         _demoMode.value = false
         reconnectJob?.cancel()
         reconnectJob = null
@@ -1146,6 +1171,24 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    /**
+     * Track the currently-connected mock printer in memory (mocks are never saved)
+     * so the dashboard picker can switch between mocks and saved printers.
+     */
+    private fun recordMockPrinter() {
+        val serial = _connectedSerialNumber.value
+        val ip = _connectedIp.value
+        if (serial.isBlank() || ip.isBlank() || _demoMode.value) return
+        if (_mockPrinters.value.any { it.serialNumber == serial }) return
+        val deviceName = discoveredPrinters.value.firstOrNull { it.serialNumber == serial }?.deviceName ?: ""
+        _mockPrinters.value = _mockPrinters.value + SavedPrinter(
+            ip = ip,
+            serialNumber = serial,
+            accessCode = _connectedAccessCode.value,
+            deviceName = deviceName,
+        )
+    }
+
     fun saveCurrentPrinter() {
         val serial = _connectedSerialNumber.value
         val ip = _connectedIp.value
@@ -1160,13 +1203,24 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
 
         val serialsCsv = prefs.getString("saved_printer_serials", "") ?: ""
         val serials = serialsCsv.split(",").filter { it.isNotBlank() }.toMutableSet()
+        val accessCode = _connectedAccessCode.value
+
+        // Skip the prefs write + reload when this printer is already saved with identical
+        // values — every successful (re)connect emits reportReceived, and rewriting
+        // unchanged data would needlessly churn disk and the savedPrinters flow.
+        val alreadyCurrent = serial in serials &&
+            prefs.getString("saved_ip_$serial", null) == ip &&
+            prefs.getString("saved_name_$serial", null) == deviceName &&
+            prefs.getString("access_code_$serial", null) == accessCode
+        if (alreadyCurrent) return
+
         serials.add(serial)
 
         prefs.edit()
             .putString("saved_printer_serials", serials.joinToString(","))
             .putString("saved_ip_$serial", ip)
             .putString("saved_name_$serial", deviceName)
-            .putString("access_code_$serial", _connectedAccessCode.value)
+            .putString("access_code_$serial", accessCode)
             .apply()
 
         loadSavedPrinters()

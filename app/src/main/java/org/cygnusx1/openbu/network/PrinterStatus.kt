@@ -41,6 +41,10 @@ data class PrinterStatus(
     val nozzleTargetTemper: Float = 0f,
     val bedTemper: Float = 0f,
     val bedTargetTemper: Float = 0f,
+    val chamberTemper: Float = 0f,
+    // True when the connected "printer" is an openbu-mock instance (it labels itself
+    // via a "mock" field in its status report). Used to skip auto-saving mocks.
+    val isMock: Boolean = false,
     val heatbreakFanSpeed: Int = 0,
     val coolingFanSpeed: Int = 0,
     val bigFan1Speed: Int = 0,

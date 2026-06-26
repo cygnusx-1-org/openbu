@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -41,6 +42,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Print
@@ -119,6 +122,7 @@ import org.cygnusx1.openbu.network.AmsUnit
 import org.cygnusx1.openbu.data.HmsLookup
 import org.cygnusx1.openbu.data.HmsWikiResult
 import org.cygnusx1.openbu.network.PrinterStatus
+import org.cygnusx1.openbu.network.SavedPrinter
 
 private val HorizontalCardPadding = 4.dp
 private val VerticalCardPadding = 4.dp
@@ -132,6 +136,8 @@ fun DashboardScreen(
     printerStatus: PrinterStatus,
     printerName: String,
     serialNumber: String,
+    availablePrinters: List<SavedPrinter> = emptyList(),
+    onSelectPrinter: (SavedPrinter) -> Unit = {},
     showMainStream: Boolean,
     internalRtspPlayer: ExoPlayer?,
     rtspPlayer: ExoPlayer?,
@@ -332,7 +338,53 @@ fun DashboardScreen(
                     style = MaterialTheme.typography.headlineSmall,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 )
-                if (printerName.isNotBlank()) {
+                if (availablePrinters.size > 1) {
+                    // More than one known printer (saved or in-memory mock) — let the
+                    // name double as a picker to switch without leaving the dashboard.
+                    var printerMenuExpanded by remember { mutableStateOf(false) }
+                    Box {
+                        Row(
+                            modifier = Modifier
+                                .clickable { printerMenuExpanded = true }
+                                .padding(horizontal = 16.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = printerName.ifBlank { serialNumber },
+                                // No explicit style: inherit the same ambient text style the
+                                // NavigationDrawerItem labels below use, so the picker matches them
+                                // exactly and scales with the system font/display size.
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Icon(
+                                imageVector = Icons.Filled.ArrowDropDown,
+                                contentDescription = stringResource(R.string.select_printer),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = printerMenuExpanded,
+                            onDismissRequest = { printerMenuExpanded = false },
+                        ) {
+                            availablePrinters.forEach { printer ->
+                                val isCurrent = printer.serialNumber == serialNumber
+                                DropdownMenuItem(
+                                    text = { Text(printer.deviceName.ifBlank { printer.serialNumber }) },
+                                    onClick = {
+                                        printerMenuExpanded = false
+                                        if (!isCurrent) {
+                                            scope.launch { drawerState.close() }
+                                            onSelectPrinter(printer)
+                                        }
+                                    },
+                                    trailingIcon = if (isCurrent) {
+                                        { Icon(Icons.Filled.Check, contentDescription = null) }
+                                    } else null,
+                                )
+                            }
+                        }
+                    }
+                } else if (printerName.isNotBlank()) {
                     Text(
                         text = printerName,
                         style = MaterialTheme.typography.bodyMedium,
@@ -442,10 +494,12 @@ fun DashboardScreen(
             .padding(horizontal = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Box(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             IconButton(
                 onClick = { scope.launch { drawerState.open() } },
-                modifier = Modifier.align(Alignment.CenterStart),
             ) {
                 Icon(
                     imageVector = Icons.Filled.Menu,
@@ -454,7 +508,7 @@ fun DashboardScreen(
                 )
             }
             Column(
-                modifier = Modifier.align(Alignment.Center),
+                modifier = Modifier.weight(1f),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -504,26 +558,24 @@ fun DashboardScreen(
                     )
                 }
             }
-            Row(
-                modifier = Modifier.align(Alignment.CenterEnd),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (printerStatus.hmsErrors.isNotEmpty()) {
-                    TextButton(onClick = { showHmsDialog = true }) {
-                        Text(
-                            text = stringResource(R.string.hms_error_label),
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.labelSmall,
-                        )
-                    }
-                }
-                IconButton(onClick = { showSpeedDialog = true }) {
-                    Icon(
-                        imageVector = Icons.Filled.Speed,
-                        contentDescription = stringResource(R.string.print_speed),
-                        tint = MaterialTheme.colorScheme.onBackground,
-                    )
-                }
+            IconButton(onClick = { showSpeedDialog = true }) {
+                Icon(
+                    imageVector = Icons.Filled.Speed,
+                    contentDescription = stringResource(R.string.print_speed),
+                    tint = MaterialTheme.colorScheme.onBackground,
+                )
+            }
+        }
+
+        // HMS errors sit on their own line below the title bar so the long
+        // (debug) app name stays centered without the button overlapping it.
+        if (printerStatus.hmsErrors.isNotEmpty()) {
+            TextButton(onClick = { showHmsDialog = true }) {
+                Text(
+                    text = stringResource(R.string.hms_error_label),
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.labelSmall,
+                )
             }
         }
 
@@ -649,44 +701,68 @@ fun DashboardScreen(
 
         Spacer(modifier = Modifier.height(VerticalCardPadding))
 
-        // Nozzle, Bed & Fan speeds
-        Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            IconStatusCard(
-                title = stringResource(R.string.nozzle),
-                iconRes = R.drawable.ic_nozzle,
-                value = stringResource(R.string.temp_current_target, printerStatus.nozzleTemper, printerStatus.nozzleTargetTemper),
-                modifier = Modifier.weight(1f).fillMaxHeight(),
-                onClick = { showNozzleDialog = true },
+        // Nozzle, Bed, Chamber & Fan speeds. Collected into a list and laid out in
+        // rows of up to three so the cards stay readable on low-res displays
+        // instead of crowding a single six-wide row.
+        val statusCards = mutableListOf<StatusCardSpec>()
+        statusCards += StatusCardSpec(
+            title = stringResource(R.string.nozzle),
+            iconRes = R.drawable.ic_nozzle,
+            value = stringResource(R.string.temp_current_target, printerStatus.nozzleTemper, printerStatus.nozzleTargetTemper),
+            onClick = { showNozzleDialog = true },
+        )
+        statusCards += StatusCardSpec(
+            title = stringResource(R.string.bed),
+            iconRes = R.drawable.ic_bed,
+            value = stringResource(R.string.temp_current_target, printerStatus.bedTemper, printerStatus.bedTargetTemper),
+            onClick = { showBedDialog = true },
+        )
+        if (series.hasChamberTemp) {
+            statusCards += StatusCardSpec(
+                title = stringResource(R.string.chamber),
+                iconRes = R.drawable.ic_chamber_temp,
+                value = stringResource(R.string.temp_celsius, printerStatus.chamberTemper.toInt()),
             )
-            IconStatusCard(
-                title = stringResource(R.string.bed),
-                iconRes = R.drawable.ic_bed,
-                value = stringResource(R.string.temp_current_target, printerStatus.bedTemper, printerStatus.bedTargetTemper),
-                modifier = Modifier.weight(1f).fillMaxHeight(),
-                onClick = { showBedDialog = true },
+        }
+        statusCards += StatusCardSpec(
+            title = stringResource(R.string.part_fan),
+            iconRes = R.drawable.ic_part_fan,
+            value = stringResource(R.string.percent, fanSpeedPercent(printerStatus.coolingFanSpeed)),
+            onClick = { showPartFanDialog = true },
+        )
+        if (isEnclosed) {
+            statusCards += StatusCardSpec(
+                title = stringResource(R.string.aux_fan),
+                iconRes = R.drawable.ic_aux_fan,
+                value = stringResource(R.string.percent, fanSpeedPercent(printerStatus.bigFan1Speed)),
+                onClick = { showAuxFanDialog = true },
             )
-            IconStatusCard(
-                title = stringResource(R.string.part_fan),
-                iconRes = R.drawable.ic_part_fan,
-                value = stringResource(R.string.percent, fanSpeedPercent(printerStatus.coolingFanSpeed)),
-                modifier = Modifier.weight(1f).fillMaxHeight(),
-                onClick = { showPartFanDialog = true },
+            statusCards += StatusCardSpec(
+                title = stringResource(R.string.chamber_fan),
+                iconRes = R.drawable.ic_chamber_fan,
+                value = stringResource(R.string.percent, fanSpeedPercent(printerStatus.bigFan2Speed)),
+                onClick = { showChamberFanDialog = true },
             )
-            if (isEnclosed) {
-                IconStatusCard(
-                    title = stringResource(R.string.aux_fan),
-                    iconRes = R.drawable.ic_aux_fan,
-                    value = stringResource(R.string.percent, fanSpeedPercent(printerStatus.bigFan1Speed)),
-                    modifier = Modifier.weight(1f).fillMaxHeight(),
-                    onClick = { showAuxFanDialog = true },
-                )
-                IconStatusCard(
-                    title = stringResource(R.string.chamber_fan),
-                    iconRes = R.drawable.ic_chamber_fan,
-                    value = stringResource(R.string.percent, fanSpeedPercent(printerStatus.bigFan2Speed)),
-                    modifier = Modifier.weight(1f).fillMaxHeight(),
-                    onClick = { showChamberFanDialog = true },
-                )
+        }
+        // Only split into rows of three once there are six cards; five or fewer
+        // stay on a single row.
+        val cardsPerRow = if (statusCards.size > 5) 3 else statusCards.size
+        statusCards.chunked(cardsPerRow).forEachIndexed { rowIndex, rowCards ->
+            if (rowIndex > 0) Spacer(modifier = Modifier.height(8.dp))
+            Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                rowCards.forEach { card ->
+                    IconStatusCard(
+                        title = card.title,
+                        iconRes = card.iconRes,
+                        value = card.value,
+                        modifier = Modifier.weight(1f).fillMaxHeight(),
+                        onClick = card.onClick,
+                    )
+                }
+                // Pad short final rows so cards keep a consistent width across rows.
+                repeat(3 - rowCards.size) {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
             }
         }
 
@@ -953,6 +1029,13 @@ private fun PrintStatusCard(
         }
     }
 }
+
+private class StatusCardSpec(
+    val title: String,
+    val iconRes: Int,
+    val value: String,
+    val onClick: (() -> Unit)? = null,
+)
 
 @Composable
 private fun IconStatusCard(
@@ -1475,7 +1558,7 @@ private fun TemperatureDialog(
                         Text("−", style = MaterialTheme.typography.headlineMedium)
                     }
                     Text(
-                        text = stringResource(R.string.target_temp_celsius, targetTemp),
+                        text = stringResource(R.string.temp_celsius, targetTemp),
                         style = MaterialTheme.typography.headlineMedium,
                         modifier = Modifier.padding(horizontal = horizontalPadding),
                     )

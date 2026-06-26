@@ -151,8 +151,10 @@ class BambuMqttClient(
 
                     when (packetType) {
                         3 -> {                       // PUBLISH
-                            _reportReceived.value = true
+                            // Parse first so printerStatus (incl. the mock flag) reflects this
+                            // report before reportReceived flips — consumers gate on both.
                             handlePublish(payload)
+                            _reportReceived.value = true
                         }
                         4 -> if (debugLogging) Log.d(TAG, "PUBACK received") // PUBACK
                         13 -> {                      // PINGREQ
@@ -588,6 +590,26 @@ class BambuMqttClient(
         }
     }
 
+    // Chamber temperature reporting differs by model:
+    //   - X1 family / P2S: real sensor, direct °C in top-level "chamber_temper".
+    //   - H2 family: no top-level field; the reading lives in device.ctc.info.temp,
+    //     encoded as target*65536 + current when the heater is on, or a direct °C
+    //     value when idle (heater off).
+    // Returns null when the report carries no chamber reading (keep the prior value).
+    private fun parseChamberTemper(print: JSONObject): Float? {
+        if (print.has("chamber_temper")) {
+            return print.optDouble("chamber_temper").toFloat()
+        }
+        val info = print.optJSONObject("device")?.optJSONObject("ctc")?.optJSONObject("info")
+        if (info != null && info.has("temp")) {
+            val raw = info.optDouble("temp")
+            // Values above 500 pack target*65536 + current; the low half is the
+            // current temperature. Smaller values are a direct °C reading.
+            return if (raw > 500) (raw.toLong() % 65536).toFloat() else raw.toFloat()
+        }
+        return null
+    }
+
     private fun parsePrinterStatus(print: JSONObject) {
         val current = _printerStatus.value
 
@@ -604,6 +626,8 @@ class BambuMqttClient(
         val nozzleTarget = if (print.has("nozzle_target_temper")) print.optDouble("nozzle_target_temper").toFloat() else current.nozzleTargetTemper
         val bedTemper = if (print.has("bed_temper")) print.optDouble("bed_temper").toFloat() else current.bedTemper
         val bedTarget = if (print.has("bed_target_temper")) print.optDouble("bed_target_temper").toFloat() else current.bedTargetTemper
+        val chamberTemper = parseChamberTemper(print) ?: current.chamberTemper
+        val isMock = if (print.has("mock")) print.optBoolean("mock") else current.isMock
         // fan_gear packs 0-255 PWM values: bits 0-7 cooling, 8-15 big_fan1, 16-23 big_fan2
         val heatbreakFan: Int
         val coolingFan: Int
@@ -745,6 +769,8 @@ class BambuMqttClient(
             nozzleTargetTemper = nozzleTarget,
             bedTemper = bedTemper,
             bedTargetTemper = bedTarget,
+            chamberTemper = chamberTemper,
+            isMock = isMock,
             heatbreakFanSpeed = heatbreakFan,
             coolingFanSpeed = coolingFan,
             bigFan1Speed = bigFan1,
