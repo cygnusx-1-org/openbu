@@ -75,13 +75,13 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_21
-        targetCompatibility = JavaVersion.VERSION_21
+        sourceCompatibility = JavaVersion.VERSION_24
+        targetCompatibility = JavaVersion.VERSION_24
     }
 
     kotlin {
         compilerOptions {
-            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_24)
         }
     }
 
@@ -126,6 +126,10 @@ abstract class RenameApkTask : DefaultTask() {
 
     @TaskAction
     fun taskAction() {
+        // Clear stale APKs (e.g. from a previous naming scheme like openbu-direct-*)
+        // so the output folder only ever holds the current build's artifacts.
+        outFolder.get().asFile.listFiles { f -> f.extension == "apk" }
+            ?.forEach { it.delete() }
         transformationRequest.get().submit(this) { builtArtifact: BuiltArtifact ->
             // With ABI splits there's one APK per architecture; append the ABI so
             // the artifacts don't overwrite each other under a single name.
@@ -146,7 +150,7 @@ androidComponents {
         val apkName = if (variant.buildType == "debug") {
             "openbu-${variant.flavorName}-${variant.buildType}-$vName"
         } else {
-            "openbu-${variant.flavorName}-$vName"
+            "openbu-$vName"
         }
         val renameTask = tasks.register<RenameApkTask>(
             "rename${variant.name.replaceFirstChar { it.uppercase() }}Apk",
