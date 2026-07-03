@@ -81,9 +81,16 @@ class BambuMqttClient(
     private var socket: SSLSocket? = null
     private var socketOutput: OutputStream? = null
     private val amsModelMap = mutableMapOf<String, String>()
+    // H2-series printers report the loaded slot via device.extruder.info[].snow rather
+    // than ams.tray_now (which carries a stale value). Latched once we see extruder
+    // info so partial updates that still echo ams.tray_now don't clobber the real value.
+    private var usesExtruderSnow = false
     private val nextPacketId = AtomicInteger(2)
 
     fun connect(scope: CoroutineScope) {
+        // Reset per-connection detection state so a reused instance reconnecting to a
+        // different printer family doesn't inherit the previous printer's latch.
+        usesExtruderSnow = false
         scope.launch(Dispatchers.IO) {
             try {
                 if (debugLogging) Log.d(TAG, "Connecting to MQTT broker at $ip:8883, serial: $serialNumber")
@@ -663,6 +670,7 @@ class BambuMqttClient(
 
         var amsUnits = current.amsUnits
         var vtTray = current.vtTray
+        var trayNow = current.trayNow
 
         val vtTrayObj = print.optJSONObject("vt_tray")
         if (vtTrayObj != null) {
@@ -679,12 +687,40 @@ class BambuMqttClient(
                     trayWeight = vtTrayObj.optString("tray_weight", "0").toIntOrNull() ?: 0,
                 )
             } else {
-                null
+                // Empty tray_type: keep the latched value rather than clobbering a
+                // previously-good spool with null on a partial report.
+                vtTray
+            }
+        }
+
+        // H2-series printers report the external spool as a "vir_slot" array (id 255)
+        // instead of the X1/P "vt_tray" object (id 254). Map the first entry into the
+        // same vtTray slot the UI already renders.
+        val virSlotArr = print.optJSONArray("vir_slot")
+        if (virSlotArr != null && virSlotArr.length() > 0) {
+            val virObj = virSlotArr.getJSONObject(0)
+            val trayType = virObj.optString("tray_type", "")
+            vtTray = if (trayType.isNotEmpty()) {
+                AmsTray(
+                    id = virObj.optString("id", "255"),
+                    trayType = trayType,
+                    trayColor = virObj.optString("tray_color", ""),
+                    trayInfoIdx = virObj.optString("tray_info_idx", ""),
+                    remainPercent = virObj.optInt("remain", -1),
+                    trayWeight = virObj.optString("tray_weight", "0").toIntOrNull() ?: 0,
+                )
+            } else {
+                // Empty tray_type: keep the latched value rather than clobbering a
+                // previously-good spool with null on a partial report.
+                vtTray
             }
         }
 
         val ams = print.optJSONObject("ams")
         if (ams != null) {
+            if (!usesExtruderSnow && ams.has("tray_now")) {
+                trayNow = ams.optString("tray_now", trayNow)
+            }
             val amsArray = ams.optJSONArray("ams")
             if (amsArray != null && amsArray.length() > 0) {
                 val units = mutableListOf<AmsUnit>()
@@ -725,6 +761,39 @@ class BambuMqttClient(
                     ))
                 }
                 amsUnits = units
+            }
+        }
+
+        // H2-series printers don't report the loaded slot via ams.tray_now (it carries
+        // a stale "0" even with no AMS). The reliable signal is per-extruder under
+        // device.extruder.info[].snow, a 16-bit (amsId << 8) | slot value. Decode it to
+        // the X1/P trayNow convention the UI uses: amsId*4 + slot, 254 = external spool
+        // (amsId 255), 255 = nothing loaded (0xFFFF). When present, it wins over tray_now.
+        val extruderInfo = print.optJSONObject("device")
+            ?.optJSONObject("extruder")
+            ?.optJSONArray("info")
+        if (extruderInfo != null) {
+            // Recompute from scratch: default to "255" (nothing loaded) so unloading
+            // filament clears the active slot instead of latching the last value.
+            var sawSnow = false
+            var decoded = "255"
+            for (i in 0 until extruderInfo.length()) {
+                val info = extruderInfo.getJSONObject(i)
+                if (!info.has("snow")) continue // no signal in this entry; don't clobber
+                sawSnow = true
+                val snow = info.optInt("snow", -1)
+                if (snow < 0 || (snow and 0xFFFF) == 0xFFFF) continue // unset / nothing loaded
+                val amsId = (snow ushr 8) and 0xFF
+                val slot = snow and 0xFF
+                decoded = if (amsId == 0xFF) "254" else (amsId * 4 + slot).toString()
+                break
+            }
+            // Only latch onto the snow signal (and overwrite trayNow) once we've actually
+            // seen a snow value. A snow-less extruder.info must not disable ams.tray_now,
+            // or an X1/P that emits one would freeze trayNow at its first reading.
+            if (sawSnow) {
+                usesExtruderSnow = true
+                trayNow = decoded
             }
         }
 
@@ -777,6 +846,7 @@ class BambuMqttClient(
             bigFan2Speed = bigFan2,
             amsUnits = amsUnits,
             vtTray = vtTray,
+            trayNow = trayNow,
             spdLvl = spdLvl,
             skippedObjects = skippedObjects,
             hmsErrors = hmsErrors,

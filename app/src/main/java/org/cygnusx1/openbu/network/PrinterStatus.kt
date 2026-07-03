@@ -51,6 +51,9 @@ data class PrinterStatus(
     val bigFan2Speed: Int = 0,
     val amsUnits: List<AmsUnit> = emptyList(),
     val vtTray: AmsTray? = null,
+    // Global index of the tray currently loaded into the toolhead, from ams.tray_now.
+    // For AMS slots: amsUnitId * 4 + slotIndex. 254 = external spool, 255 = none loaded.
+    val trayNow: String = "255",
     val spdLvl: Int = 2, // 2 = Normal = 100%
     val skippedObjects: List<Int> = emptyList(), // from s_obj
     val hmsErrors: List<HmsError> = emptyList(),

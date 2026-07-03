@@ -773,7 +773,7 @@ fun DashboardScreen(
         val halfWidthAms = printerStatus.amsUnits.filter { it.model.isNotEmpty() && !it.model.equals("AMS", ignoreCase = true) }
 
         for (amsUnit in fullWidthAms) {
-            AmsCard(amsUnit) { tray ->
+            AmsCard(amsUnit, trayNow = printerStatus.trayNow) { tray ->
                 filamentEditTarget = FilamentEditTarget(
                     amsId = amsUnit.id.toIntOrNull() ?: 0,
                     trayId = tray.id.toIntOrNull() ?: 0,
@@ -793,7 +793,7 @@ fun DashboardScreen(
                 horizontalArrangement = Arrangement.spacedBy(HorizontalCardPadding),
             ) {
                 val unit = halfWidthAms[halfIndex]
-                AmsCard(unit, modifier = Modifier.weight(1f).fillMaxHeight()) { tray ->
+                AmsCard(unit, modifier = Modifier.weight(1f).fillMaxHeight(), trayNow = printerStatus.trayNow) { tray ->
                     filamentEditTarget = FilamentEditTarget(
                         amsId = unit.id.toIntOrNull() ?: 0,
                         trayId = tray.id.toIntOrNull() ?: 0,
@@ -805,7 +805,7 @@ fun DashboardScreen(
                 halfIndex++
                 if (halfIndex < halfWidthAms.size) {
                     val unit2 = halfWidthAms[halfIndex]
-                    AmsCard(unit2, modifier = Modifier.weight(1f).fillMaxHeight()) { tray ->
+                    AmsCard(unit2, modifier = Modifier.weight(1f).fillMaxHeight(), trayNow = printerStatus.trayNow) { tray ->
                         filamentEditTarget = FilamentEditTarget(
                             amsId = unit2.id.toIntOrNull() ?: 0,
                             trayId = tray.id.toIntOrNull() ?: 0,
@@ -817,7 +817,7 @@ fun DashboardScreen(
                     halfIndex++
                 } else {
                     // Pair last AMS-HT with External Spool
-                    ExternalSpoolCard(printerStatus.vtTray, modifier = Modifier.weight(1f).fillMaxHeight()) {
+                    ExternalSpoolCard(printerStatus.vtTray, modifier = Modifier.weight(1f).fillMaxHeight(), isActive = printerStatus.trayNow == "254") {
                         filamentEditTarget = FilamentEditTarget(
                             amsId = 255,
                             trayId = 254,
@@ -834,7 +834,7 @@ fun DashboardScreen(
 
         // External spool — full-width if not already paired above
         if (halfWidthAms.size % 2 == 0) {
-            ExternalSpoolCard(printerStatus.vtTray) {
+            ExternalSpoolCard(printerStatus.vtTray, isActive = printerStatus.trayNow == "254") {
                 filamentEditTarget = FilamentEditTarget(
                     amsId = 255,
                     trayId = 254,
@@ -1081,8 +1081,10 @@ private fun IconStatusCard(
 }
 
 @Composable
-private fun AmsCard(amsUnit: AmsUnit, modifier: Modifier = Modifier, onTrayClick: (AmsTray) -> Unit) {
+private fun AmsCard(amsUnit: AmsUnit, modifier: Modifier = Modifier, trayNow: String = "255", onTrayClick: (AmsTray) -> Unit) {
     val amsLabel = amsUnit.model.ifEmpty { "AMS" }
+    val unitId = amsUnit.id.toIntOrNull() ?: 0
+    val activeTrayNow = trayNow.toIntOrNull()
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -1106,7 +1108,12 @@ private fun AmsCard(amsUnit: AmsUnit, modifier: Modifier = Modifier, onTrayClick
                     horizontalArrangement = Arrangement.SpaceEvenly,
                 ) {
                     for (tray in amsUnit.trays) {
-                        FilamentSlot(tray, onClick = { onTrayClick(tray) })
+                        val globalIdx = unitId * 4 + (tray.id.toIntOrNull() ?: 0)
+                        FilamentSlot(
+                            tray,
+                            isActive = activeTrayNow != null && activeTrayNow == globalIdx,
+                            onClick = { onTrayClick(tray) },
+                        )
                     }
                 }
             }
@@ -1123,7 +1130,7 @@ private fun LowDpiScaledContent(content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun FilamentSlot(tray: AmsTray, onClick: () -> Unit = {}) {
+private fun FilamentSlot(tray: AmsTray, isActive: Boolean = false, onClick: () -> Unit = {}) {
     val isEmpty = tray.trayType.isEmpty()
     LowDpiScaledContent {
         Column(
@@ -1131,36 +1138,40 @@ private fun FilamentSlot(tray: AmsTray, onClick: () -> Unit = {}) {
             modifier = Modifier.clickable { onClick() },
         ) {
             if (isEmpty) {
-                Box(
-                    modifier = Modifier.size(32.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = stringResource(R.string.empty),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Visible,
-                    )
+                ActiveSlotRing(isActive = isActive) {
+                    Box(
+                        modifier = Modifier.size(32.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.empty),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Visible,
+                        )
+                    }
                 }
             } else {
                 val bgColor = parseHexColor(tray.trayColor)
                 val grams = tray.remainGrams
-                Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .clip(CircleShape)
-                        .background(bgColor),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    if (grams != null) {
-                        Text(
-                            text = stringResource(R.string.grams_value, grams),
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = contrastTextColor(bgColor),
-                            maxLines = 1,
-                        )
+                ActiveSlotRing(isActive = isActive) {
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .background(bgColor),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (grams != null) {
+                            Text(
+                                text = stringResource(R.string.grams_value, grams),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = contrastTextColor(bgColor),
+                                maxLines = 1,
+                            )
+                        }
                     }
                 }
                 Spacer(modifier = Modifier.height(4.dp))
@@ -1174,8 +1185,36 @@ private fun FilamentSlot(tray: AmsTray, onClick: () -> Unit = {}) {
     }
 }
 
+/**
+ * Wraps a 32.dp filament swatch with a glowing ring when the slot holds the
+ * filament currently loaded into the toolhead (issue #45). The wrapper always
+ * reserves the same footprint whether or not the ring is shown, so the swatch
+ * size and the label below it stay aligned across every slot.
+ */
 @Composable
-private fun ExternalSpoolCard(vtTray: AmsTray?, modifier: Modifier = Modifier, onClick: () -> Unit) {
+private fun ActiveSlotRing(isActive: Boolean, content: @Composable () -> Unit) {
+    val ringColor = MaterialTheme.colorScheme.primary
+    Box(
+        modifier = Modifier
+            .size(42.dp)
+            .then(
+                if (isActive) {
+                    Modifier
+                        .border(4.dp, ringColor.copy(alpha = 0.25f), CircleShape)
+                        .padding(2.dp)
+                        .border(2.dp, ringColor, CircleShape)
+                } else {
+                    Modifier
+                }
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        content()
+    }
+}
+
+@Composable
+private fun ExternalSpoolCard(vtTray: AmsTray?, modifier: Modifier = Modifier, isActive: Boolean = false, onClick: () -> Unit) {
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -1196,24 +1235,26 @@ private fun ExternalSpoolCard(vtTray: AmsTray?, modifier: Modifier = Modifier, o
                 horizontalArrangement = Arrangement.SpaceEvenly,
             ) {
                 if (vtTray != null) {
-                    FilamentSlot(vtTray, onClick = onClick)
+                    FilamentSlot(vtTray, isActive = isActive, onClick = onClick)
                 } else {
                     LowDpiScaledContent {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier.clickable { onClick() },
                         ) {
-                            Box(
-                                modifier = Modifier.size(32.dp),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.empty),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Visible,
-                                )
+                            ActiveSlotRing(isActive = isActive) {
+                                Box(
+                                    modifier = Modifier.size(32.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.empty),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Visible,
+                                    )
+                                }
                             }
                         }
                     }
