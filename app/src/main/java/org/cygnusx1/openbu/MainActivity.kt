@@ -613,6 +613,7 @@ class MainActivity : ComponentActivity() {
                             },
                             onSetSpeedLevel = { viewModel.setSpeedLevel(it) },
                             onSetNozzleTemperature = { viewModel.setNozzleTemperature(it) },
+                            onSetNozzleTemperatureForTool = { tool, temp -> viewModel.setNozzleTemperature(tool, temp) },
                             onSetBedTemperature = { viewModel.setBedTemperature(it) },
                             onSetFanSpeed = { fan, pwm -> viewModel.setFanSpeed(fan, pwm) },
                             onPrinterActionCommand = { viewModel.sendPrinterActionCommand(it) },
