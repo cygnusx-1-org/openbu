@@ -15,6 +15,7 @@ enum class PrinterSeries(
     H2(isEnclosed = true,  usesMjpegCamera = false, maxNozzleTemp = 350, maxBedTemp = 120, hasChamberTemp = true,  wikiTag = "h2"),
     X1(isEnclosed = true,  usesMjpegCamera = false, maxNozzleTemp = 300, maxBedTemp = 110, hasChamberTemp = true,  wikiTag = "x1"),
     X1E(isEnclosed = true, usesMjpegCamera = false, maxNozzleTemp = 320, maxBedTemp = 110, hasChamberTemp = true,  wikiTag = "x1"),
+    X2D(isEnclosed = true, usesMjpegCamera = false, maxNozzleTemp = 300, maxBedTemp = 120, hasChamberTemp = true,  wikiTag = "x2d"),
     UNKNOWN(isEnclosed = true, usesMjpegCamera = false, maxNozzleTemp = 300, maxBedTemp = 110, hasChamberTemp = false, wikiTag = ""),
 }
 
@@ -30,6 +31,7 @@ private val SERIAL_PREFIX_MAP = mapOf(
     "093" to PrinterSeries.H2,
     "00M" to PrinterSeries.X1,
     "03W" to PrinterSeries.X1E,
+    "20P" to PrinterSeries.X2D,
 )
 
 fun printerSeriesFromSerial(serial: String): PrinterSeries =

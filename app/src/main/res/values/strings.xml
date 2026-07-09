@@ -87,6 +87,9 @@
     <string name="ams_temp_humidity">%1$s  %2$s°C / Humidity %3$s%%</string>
     <string name="grams_value">%1$dg</string>
     <string name="temp_celsius">%1$d °C</string>
+    <string name="nozzle_active">%1$s ●</string>
+    <string name="nozzle_diameter_mm">%1$.1fmm</string>
+    <string name="nozzle_wear">Wear %1$d</string>
     <string name="object_label">%1$d: %2$s</string>
     <string name="density_dpi_value">%1$d dpi</string>
     <string name="mqtt_messages_received">%1$d unique message structure(s) received</string>
@@ -135,6 +138,10 @@
     <string name="empty">Empty</string>
     <string name="external_spool">External Spool</string>
     <string name="nozzle">Nozzle</string>
+    <string name="left_nozzle">Left Nozzle</string>
+    <string name="right_nozzle">Right Nozzle</string>
+    <string name="nozzle_n">Nozzle %1$d</string>
+    <string name="temp_unknown">—</string>
     <string name="bed">Bed</string>
     <string name="chamber">Chamber</string>
     <string name="select_printer">Select printer</string>
@@ -142,6 +149,9 @@
     <string name="aux_fan">Aux fan</string>
     <string name="chamber_fan">Chamber fan</string>
     <string name="nozzle_temperature">Nozzle Temperature</string>
+    <string name="left_nozzle_temperature">Left Nozzle Temperature</string>
+    <string name="right_nozzle_temperature">Right Nozzle Temperature</string>
+    <string name="nozzle_n_temperature">Nozzle %1$d Temperature</string>
     <string name="bed_temperature">Bed Temperature</string>
     <string name="part_fan_speed">Part Fan Speed</string>
     <string name="aux_fan_speed">Aux Fan Speed</string>

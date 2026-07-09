@@ -22,6 +22,16 @@ data class AmsUnit(
     val trays: List<AmsTray> = emptyList(),
 )
 
+data class NozzleInfo(
+    val id: Int = 0,
+    val temper: Float? = null,
+    val targetTemper: Float? = null,
+    val type: String = "",
+    val diameter: Float = 0f,
+    val wear: Int = 0,
+    val active: Boolean = false,
+)
+
 data class HmsError(val attr: Long, val code: Long) {
     val hmsCode: String get() = "%04X_%04X_%04X_%04X".format(
         attr ushr 16, attr and 0xFFFF,
@@ -39,6 +49,7 @@ data class PrinterStatus(
     val mcRemainingTime: Int = 0,
     val nozzleTemper: Float = 0f,
     val nozzleTargetTemper: Float = 0f,
+    val nozzles: List<NozzleInfo> = emptyList(),
     val bedTemper: Float = 0f,
     val bedTargetTemper: Float = 0f,
     val chamberTemper: Float = 0f,
