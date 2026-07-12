@@ -2,9 +2,12 @@ import com.android.build.api.artifact.ArtifactTransformationRequest
 import com.android.build.api.artifact.SingleArtifact
 import com.android.build.api.variant.BuiltArtifact
 import com.android.build.api.variant.FilterConfiguration
+import org.gradle.process.ExecOperations
+import java.io.ByteArrayOutputStream
 import java.io.FileInputStream
 import java.util.Properties
 import java.io.File
+import javax.inject.Inject
 
 val keystorePropertiesFile = rootProject.file("keystore.properties")
 val keystoreProperties = Properties()
@@ -26,6 +29,11 @@ android {
         minSdk = 26
         targetSdk = 35
         versionCode = 3
+        // Base version only. The "-dirty" marker for builds from a tree with uncommitted changes
+        // is applied to the APK/AAB *filenames* at execution time (see DirtyAwareTask), so it
+        // can't go stale under the configuration cache and stays out of the user-visible manifest
+        // version. A "-dirty" build is instead visible in the artifact filename (no automated
+        // release guard exists yet).
         versionName = "1.0.26"
     }
 
@@ -106,12 +114,46 @@ android {
     }
 }
 
+// Base for the artifact-renaming tasks. The "-dirty" tag is computed in the task action
+// (execution time) rather than during configuration, so it reflects the working tree at build
+// time and stays correct under the configuration cache — a configuration-time git check is
+// captured once in the cached configuration and goes stale when that configuration is reused.
+// ExecOperations is injected so the git call is configuration-cache compatible.
+abstract class DirtyAwareTask : DefaultTask() {
+    @get:Inject
+    abstract val execOps: ExecOperations
+
+    // Directory the git check runs from, pinned to the repo root so the result doesn't depend on
+    // the process working directory the build was launched from. Internal: it's a fixed path, not
+    // a tracked input.
+    @get:Internal
+    abstract val repoRoot: DirectoryProperty
+
+    // "-dirty" when tracked files have uncommitted changes, else "". Untracked files are ignored
+    // so stray local files don't flag an otherwise-clean build. A missing git binary or non-repo
+    // checkout yields "" — isIgnoreExitValue plus a swallowed stderr keep it quiet instead of
+    // failing the build or printing "not a git repository".
+    protected fun gitDirtySuffix(): String = try {
+        val stdout = ByteArrayOutputStream()
+        val result = execOps.exec {
+            repoRoot.orNull?.asFile?.let { workingDir = it }
+            commandLine("git", "status", "--porcelain", "--untracked-files=no")
+            standardOutput = stdout
+            errorOutput = ByteArrayOutputStream()
+            isIgnoreExitValue = true
+        }
+        if (result.exitValue == 0 && stdout.toString().trim().isNotEmpty()) "-dirty" else ""
+    } catch (ignored: Exception) {
+        ""
+    }
+}
+
 // Name APK outputs directly (e.g. openbu-direct-debug-1.0.26.apk) so there's a single
 // correctly-named artifact and no post-build file moves — those broke installDirectDebug
 // and corrupted incremental builds. Uses the public Artifacts transform API (no internal
 // AGP classes); submit() rewrites the BuiltArtifacts metadata so install/test tasks still
 // resolve the renamed APK.
-abstract class RenameApkTask : DefaultTask() {
+abstract class RenameApkTask : DirtyAwareTask() {
     @get:InputFiles
     abstract val apkFolder: DirectoryProperty
 
@@ -126,8 +168,10 @@ abstract class RenameApkTask : DefaultTask() {
 
     @TaskAction
     fun taskAction() {
-        // Clear stale APKs (e.g. from a previous naming scheme like openbu-direct-*)
-        // so the output folder only ever holds the current build's artifacts.
+        val dirty = gitDirtySuffix()
+        // Clear stale APKs (from a previous naming scheme like openbu-direct-*, or a "-dirty"
+        // name left by an earlier dirty build) so the output folder only ever holds the current
+        // build's artifacts.
         outFolder.get().asFile.listFiles { f -> f.extension == "apk" }
             ?.forEach { it.delete() }
         transformationRequest.get().submit(this) { builtArtifact: BuiltArtifact ->
@@ -136,13 +180,17 @@ abstract class RenameApkTask : DefaultTask() {
             val abi = builtArtifact.filters
                 .firstOrNull { it.filterType == FilterConfiguration.FilterType.ABI }
                 ?.identifier
-            val suffix = abi?.let { "-$it" } ?: ""
-            val dest = outFolder.get().file("${artifactName.get()}$suffix.apk").asFile
+            val abiSuffix = abi?.let { "-$it" } ?: ""
+            val dest = outFolder.get().file("${artifactName.get()}$dirty$abiSuffix.apk").asFile
             File(builtArtifact.outputFile).copyTo(dest, overwrite = true)
             dest
         }
     }
 }
+
+// The git repo root is the Gradle root project directory; the dirty-check tasks run git from
+// here so the result is independent of where the build was launched.
+val repoRootDir = rootProject.layout.projectDirectory
 
 androidComponents {
     onVariants { variant ->
@@ -156,6 +204,11 @@ androidComponents {
             "rename${variant.name.replaceFirstChar { it.uppercase() }}Apk",
         ) {
             artifactName.set(apkName)
+            repoRoot.set(repoRootDir)
+            // Always re-run so the git dirty check reflects the current tree. The task's other
+            // inputs (base name, packaged APK) don't change when only the commit state does, so
+            // without this a "-dirty" name could linger after committing (or vice versa).
+            outputs.upToDateWhen { false }
         }
         val request = variant.artifacts.use(renameTask)
             .wiredWithDirectories(RenameApkTask::apkFolder, RenameApkTask::outFolder)
@@ -164,20 +217,41 @@ androidComponents {
     }
 }
 
-tasks.register("renameAabs") {
-    val appName = "openbu"
-    val vName = android.defaultConfig.versionName ?: "unknown"
-    val bundleDir = layout.buildDirectory.dir("outputs/bundle")
-    doLast {
-        bundleDir.get().asFile.walkTopDown()
+abstract class RenameAabTask : DirtyAwareTask() {
+    @get:Internal
+    abstract val appName: Property<String>
+
+    @get:Internal
+    abstract val versionName: Property<String>
+
+    @get:Internal
+    abstract val bundleDir: DirectoryProperty
+
+    @TaskAction
+    fun taskAction() {
+        val dir = bundleDir.get().asFile
+        if (!dir.exists()) return
+        val dirty = gitDirtySuffix()
+        dir.walkTopDown()
             .filter { it.extension == "aab" }
-            .filter { !it.name.startsWith(appName) }
+            .filter { !it.name.startsWith(appName.get()) }
             .forEach { aab ->
                 val variantDir = aab.parentFile.name
-                val dest = File(aab.parentFile, "${appName}-${variantDir}-${vName}.aab")
+                val dest = File(aab.parentFile, "${appName.get()}-$variantDir-${versionName.get()}$dirty.aab")
                 aab.copyTo(dest, overwrite = true)
             }
     }
+}
+
+tasks.register<RenameAabTask>("renameAabs") {
+    appName.set("openbu")
+    versionName.set(android.defaultConfig.versionName ?: "unknown")
+    bundleDir.set(layout.buildDirectory.dir("outputs/bundle"))
+    repoRoot.set(repoRootDir)
+    // Renames AAB outputs in place from the current git state — nothing to cache, and it must run
+    // whenever a bundle task runs. doNotTrackState disables up-to-date/output tracking (there are
+    // no outputs to track), so it always executes without a "task has no outputs" note.
+    doNotTrackState("Renames AAB outputs in place based on live git state; always re-run")
 }
 
 tasks.matching {
