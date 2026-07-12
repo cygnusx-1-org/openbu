@@ -97,8 +97,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -1197,16 +1199,27 @@ private fun ActiveSlotRing(isActive: Boolean, content: @Composable () -> Unit) {
     Box(
         modifier = Modifier
             .size(42.dp)
-            .then(
+            .drawBehind {
                 if (isActive) {
-                    Modifier
-                        .border(4.dp, ringColor.copy(alpha = 0.25f), CircleShape)
-                        .padding(2.dp)
-                        .border(2.dp, ringColor, CircleShape)
-                } else {
-                    Modifier
+                    val outerWidth = 4.dp.toPx()
+                    val innerWidth = 2.dp.toPx()
+                    // Inset of the solid inner ring from the box edge — reproduces the 2.dp
+                    // padding that used to sit between the two borders, so the solid ring is
+                    // drawn over the inner half of the faint outer ring.
+                    val innerInset = 2.dp.toPx()
+                    val radius = size.minDimension / 2f
+                    drawCircle(
+                        color = ringColor.copy(alpha = 0.25f),
+                        radius = radius - outerWidth / 2f,
+                        style = Stroke(width = outerWidth),
+                    )
+                    drawCircle(
+                        color = ringColor,
+                        radius = radius - innerInset - innerWidth / 2f,
+                        style = Stroke(width = innerWidth),
+                    )
                 }
-            ),
+            },
         contentAlignment = Alignment.Center,
     ) {
         content()
