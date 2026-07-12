@@ -34,7 +34,7 @@ android {
         // can't go stale under the configuration cache and stays out of the user-visible manifest
         // version. A "-dirty" build is instead visible in the artifact filename (no automated
         // release guard exists yet).
-        versionName = "1.0.26"
+        versionName = "1.0.27"
     }
 
     signingConfigs {
