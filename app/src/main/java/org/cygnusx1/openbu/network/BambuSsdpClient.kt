@@ -162,7 +162,7 @@ class BambuSsdpClient {
         val location = headers["location"]
         val ip = if (location != null) {
             // Location can be a bare IP or a URL like "http://192.168.1.100/..."
-            val parsed = try { java.net.InetAddress.getByName(location)?.hostAddress } catch (_: Exception) { null }
+            val parsed = try { java.net.InetAddress.getByName(location).hostAddress } catch (_: Exception) { null }
             parsed ?: try {
                 java.net.URI(location).host ?: senderIp
             } catch (_: Exception) {

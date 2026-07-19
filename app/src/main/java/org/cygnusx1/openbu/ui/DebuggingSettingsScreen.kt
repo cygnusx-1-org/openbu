@@ -1,5 +1,6 @@
 package org.cygnusx1.openbu.ui
 
+import android.content.ClipData
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -32,18 +33,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import org.cygnusx1.openbu.R
 
 private const val REDACTED = "REDACTED"
+private const val CLIPBOARD_LABEL = "Openbu debug log"
 
 private fun redactLogText(text: String, accessCode: String, serialNumber: String): String {
     var redacted = text
@@ -82,7 +86,8 @@ fun DebuggingSettingsScreen(
     var showMqttDataDialog by remember { mutableStateOf(false) }
     var showLogcatDialog by remember { mutableStateOf(false) }
     var logDialogTitleRes by remember { mutableStateOf(R.string.logs) }
-    val clipboardManager = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
+    val clipboardScope = rememberCoroutineScope()
 
     Scaffold(
         topBar = {
@@ -430,7 +435,9 @@ fun DebuggingSettingsScreen(
                     } else {
                         bodyText
                     }
-                    clipboardManager.setText(AnnotatedString(text))
+                    clipboardScope.launch {
+                        clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(CLIPBOARD_LABEL, text)))
+                    }
                 }) {
                     Text(if (redactLogs) "Copy Redacted" else "Copy")
                 }
@@ -464,7 +471,9 @@ fun DebuggingSettingsScreen(
             },
             confirmButton = {
                 TextButton(onClick = {
-                    clipboardManager.setText(AnnotatedString(bodyText))
+                    clipboardScope.launch {
+                        clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(CLIPBOARD_LABEL, bodyText)))
+                    }
                 }) {
                     Text(if (redactLogs) "Copy Redacted" else "Copy")
                 }

@@ -142,8 +142,8 @@ fun VlcRtspStreamScreen(vlcContent: @Composable (Modifier) -> Unit) {
                     } else {
                         val maxX = (size.width * (newScale - 1)) / 2
                         val maxY = (size.height * (newScale - 1)) / 2
-                        offsetX.floatValue = (offsetX.floatValue + pan.x).coerceIn(-maxX.toFloat(), maxX.toFloat())
-                        offsetY.floatValue = (offsetY.floatValue + pan.y).coerceIn(-maxY.toFloat(), maxY.toFloat())
+                        offsetX.floatValue = (offsetX.floatValue + pan.x).coerceIn(-maxX, maxX)
+                        offsetY.floatValue = (offsetY.floatValue + pan.y).coerceIn(-maxY, maxY)
                     }
                 }
             },
