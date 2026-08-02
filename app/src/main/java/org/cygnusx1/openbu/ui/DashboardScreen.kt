@@ -3,10 +3,10 @@ package org.cygnusx1.openbu.ui
 import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
+import android.text.format.DateFormat
 import android.util.Log
 import java.util.Calendar
 import java.text.SimpleDateFormat
-import java.util.Locale
 import org.cygnusx1.openbu.data.PrinterSeries
 import org.cygnusx1.openbu.data.printerSeriesFromSerial
 import androidx.compose.foundation.Image
@@ -125,6 +125,7 @@ import org.cygnusx1.openbu.data.HmsLookup
 import org.cygnusx1.openbu.data.HmsWikiResult
 import org.cygnusx1.openbu.network.PrinterStatus
 import org.cygnusx1.openbu.network.SavedPrinter
+import androidx.compose.ui.platform.LocalLocale
 
 private val HorizontalCardPadding = 4.dp
 private val VerticalCardPadding = 4.dp
@@ -886,7 +887,8 @@ private fun PrintStatusCard(
 
     val etaText = if (showEta && remainingMin > 0) {
         val cal = Calendar.getInstance().apply { add(Calendar.MINUTE, remainingMin) }
-        val fmt = SimpleDateFormat("h:mma", Locale.getDefault())
+        val pat = if (DateFormat.is24HourFormat(LocalContext.current)) "H:mm" else "h:mma"
+        val fmt = SimpleDateFormat(pat, LocalLocale.current.platformLocale)
         "(ETA ${fmt.format(cal.time).lowercase()})"
     } else ""
 
