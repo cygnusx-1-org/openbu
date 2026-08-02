@@ -354,6 +354,28 @@ class BambuMqttClient(
         }
     }
 
+    fun setNozzleTemperature(tool: Int, temp: Int) {
+        val out = socketOutput ?: return
+        val json = JSONObject().apply {
+            put("print", JSONObject().apply {
+                put("sequence_id", "0")
+                put("command", "gcode_line")
+                put("param", "M104 T$tool S$temp\n")
+            })
+        }
+        try {
+            val topic = "device/$serialNumber/request"
+            if (debugLogging) Log.d(TAG, "Publishing nozzle_temper=$temp tool=$tool to $topic")
+            val packet = buildPublishPacket(topic, json.toString())
+            synchronized(out) {
+                out.write(packet)
+                out.flush()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to publish nozzle temperature", e)
+        }
+    }
+
     fun setBedTemperature(temp: Int) {
         val out = socketOutput ?: return
         val json = JSONObject().apply {
@@ -826,6 +848,48 @@ class BambuMqttClient(
             } else current.hmsErrors
         } else current.hmsErrors
 
+        // Dual-nozzle printers (X2D/H2D) report per-nozzle data under device.extruder.info.
+        var nozzles = current.nozzles
+        if (extruderInfo != null && extruderInfo.length() > 0) {
+            val device = print.optJSONObject("device")
+            val extruderObj = device?.optJSONObject("extruder")
+            val previous = current.nozzles.associateBy { it.id }
+            // extruder.state packs the extruder count in the low 4 bits, active index in the next 4
+            val activeId = if (extruderObj != null && extruderObj.has("state")) {
+                (extruderObj.optInt("state") shr 4) and 0xF
+            } else {
+                current.nozzles.firstOrNull { it.active }?.id ?: 0
+            }
+            // device.nozzle.info holds the static type/diameter/wear per nozzle id
+            val nozzleInfo = mutableMapOf<Int, JSONObject>()
+            val nozzleArray = device?.optJSONObject("nozzle")?.optJSONArray("info")
+            if (nozzleArray != null) {
+                for (i in 0 until nozzleArray.length()) {
+                    val nozzle = nozzleArray.getJSONObject(i)
+                    nozzleInfo[nozzle.optInt("id", i)] = nozzle
+                }
+            }
+            val list = mutableListOf<NozzleInfo>()
+            for (i in 0 until extruderInfo.length()) {
+                val extruder = extruderInfo.getJSONObject(i)
+                val id = extruder.optInt("id", i)
+                val info = nozzleInfo[id]
+                val prev = previous[id]
+                // temp packs the current value in the low 16 bits, the target in the high 16 bits
+                val rawTemp = extruder.optInt("temp", -1)
+                list.add(NozzleInfo(
+                    id = id,
+                    temper = if (rawTemp >= 0) (rawTemp and 0xFFFF).toFloat() else prev?.temper,
+                    targetTemper = if (rawTemp >= 0) ((rawTemp shr 16) and 0xFFFF).toFloat() else prev?.targetTemper,
+                    type = info?.optString("type", "") ?: prev?.type ?: "",
+                    diameter = info?.optDouble("diameter", 0.0)?.toFloat() ?: prev?.diameter ?: 0f,
+                    wear = info?.optInt("wear", 0) ?: prev?.wear ?: 0,
+                    active = id == activeId,
+                ))
+            }
+            if (list.isNotEmpty()) nozzles = list
+        }
+
         val newStatus = PrinterStatus(
             gcodeState = gcodeState,
             gcodeFile = gcodeFile,
@@ -836,6 +900,7 @@ class BambuMqttClient(
             mcRemainingTime = mcRemainingTime,
             nozzleTemper = nozzleTemper,
             nozzleTargetTemper = nozzleTarget,
+            nozzles = nozzles,
             bedTemper = bedTemper,
             bedTargetTemper = bedTarget,
             chamberTemper = chamberTemper,

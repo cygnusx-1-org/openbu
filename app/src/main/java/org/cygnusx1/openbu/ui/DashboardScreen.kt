@@ -160,6 +160,7 @@ fun DashboardScreen(
     onOpenSkipObjects: () -> Unit,
     onSetSpeedLevel: (Int) -> Unit,
     onSetNozzleTemperature: (Int) -> Unit,
+    onSetNozzleTemperatureForTool: (Int, Int) -> Unit,
     onSetBedTemperature: (Int) -> Unit,
     onSetFanSpeed: (Int, Int) -> Unit,
     onPrinterActionCommand: (String) -> Unit,
@@ -175,6 +176,7 @@ fun DashboardScreen(
     var showSpeedDialog by remember { mutableStateOf(false) }
     var showHmsDialog by remember { mutableStateOf(false) }
     var showNozzleDialog by remember { mutableStateOf(false) }
+    var nozzleDialogTool by remember { mutableStateOf<Int?>(null) }
     var showBedDialog by remember { mutableStateOf(false) }
     var showPartFanDialog by remember { mutableStateOf(false) }
     var showAuxFanDialog by remember { mutableStateOf(false) }
@@ -208,6 +210,27 @@ fun DashboardScreen(
             onConfirm = { temp ->
                 onSetNozzleTemperature(temp)
                 showNozzleDialog = false
+            },
+        )
+    }
+
+    nozzleDialogTool?.let { tool ->
+        val sortedNozzles = printerStatus.nozzles.sortedByDescending { it.id }
+        val nzIndex = sortedNozzles.indexOfFirst { it.id == tool }
+        val nz = sortedNozzles.getOrNull(nzIndex)
+        TemperatureDialog(
+            title = when (tool) {
+                0 -> stringResource(R.string.right_nozzle_temperature)
+                1 -> stringResource(R.string.left_nozzle_temperature)
+                else -> stringResource(R.string.nozzle_n_temperature, nzIndex + 1)
+            },
+            presetKey = "nozzle_presets",
+            currentTemp = (nz?.targetTemper ?: nz?.temper ?: 0f).toInt(),
+            maxTemp = series.maxNozzleTemp,
+            onDismiss = { nozzleDialogTool = null },
+            onConfirm = { temp ->
+                onSetNozzleTemperatureForTool(tool, temp)
+                nozzleDialogTool = null
             },
         )
     }
@@ -707,12 +730,39 @@ fun DashboardScreen(
         // rows of up to three so the cards stay readable on low-res displays
         // instead of crowding a single six-wide row.
         val statusCards = mutableListOf<StatusCardSpec>()
-        statusCards += StatusCardSpec(
-            title = stringResource(R.string.nozzle),
-            iconRes = R.drawable.ic_nozzle,
-            value = stringResource(R.string.temp_current_target, printerStatus.nozzleTemper, printerStatus.nozzleTargetTemper),
-            onClick = { showNozzleDialog = true },
-        )
+        if (printerStatus.nozzles.size >= 2) {
+            // Dual-nozzle printers (X2D/H2D): one card per nozzle, Left (id 1) before Right (id 0)
+            printerStatus.nozzles.sortedByDescending { it.id }.forEachIndexed { index, nz ->
+                val title = when (nz.id) {
+                    0 -> stringResource(R.string.right_nozzle)
+                    1 -> stringResource(R.string.left_nozzle)
+                    else -> stringResource(R.string.nozzle_n, index + 1)
+                }
+                val temps = if (nz.temper != null && nz.targetTemper != null) {
+                    stringResource(R.string.temp_current_target, nz.temper, nz.targetTemper)
+                } else {
+                    stringResource(R.string.temp_unknown)
+                }
+                val spec = listOfNotNull(
+                    nz.type.takeIf { it.isNotBlank() },
+                    nz.diameter.takeIf { it > 0f }?.let { stringResource(R.string.nozzle_diameter_mm, it) },
+                    nz.wear.takeIf { it > 0 }?.let { stringResource(R.string.nozzle_wear, it) },
+                ).joinToString(" ")
+                statusCards += StatusCardSpec(
+                    title = if (nz.active) stringResource(R.string.nozzle_active, title) else title,
+                    iconRes = R.drawable.ic_nozzle,
+                    value = if (spec.isNotEmpty()) "$temps\n$spec" else temps,
+                    onClick = { nozzleDialogTool = nz.id },
+                )
+            }
+        } else {
+            statusCards += StatusCardSpec(
+                title = stringResource(R.string.nozzle),
+                iconRes = R.drawable.ic_nozzle,
+                value = stringResource(R.string.temp_current_target, printerStatus.nozzleTemper, printerStatus.nozzleTargetTemper),
+                onClick = { showNozzleDialog = true },
+            )
+        }
         statusCards += StatusCardSpec(
             title = stringResource(R.string.bed),
             iconRes = R.drawable.ic_bed,
