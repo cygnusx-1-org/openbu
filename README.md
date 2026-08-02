@@ -59,6 +59,25 @@ I am strongly considering adding this to the [Google Play Store](https://play.go
 
 [Feature requests](https://github.com/cygnusx-1-org/openbu/issues) are welcome.
 
+## Building
+The only prerequisites are the [Android SDK](https://developer.android.com/studio) and a network connection. The Gradle wrapper fetches Gradle itself, and `gradle/gradle-daemon-jvm.properties` makes it auto-provision the required [JDK](https://en.wikipedia.org/wiki/Java_Development_Kit) through [Foojay](https://foojay.io/), so no local JDK install or `JAVA_HOME` setup is needed.
+
+Point the build at your SDK, either by opening the project in [Android Studio](https://developer.android.com/studio) (which writes `local.properties` for you) or by setting `ANDROID_HOME` yourself:
+
+```
+git clone https://github.com/cygnusx-1-org/openbu.git
+cd openbu
+export ANDROID_HOME=$HOME/Android/Sdk
+./gradlew assembleDirectDebug
+```
+
+That produces per-[ABI](https://developer.android.com/ndk/guides/abis) APKs under `app/build/outputs/apk/direct/debug/`. Use `./gradlew installDirectDebug` to build and install onto a connected device. Debug builds get the `.debug` application id suffix, so they install alongside a release or Play copy of the app.
+
+There are two product flavors: `direct` for sideloaded APKs and `play` for [Play Store](https://play.google.com/store/apps?hl=en_US) bundles. Swap the flavor into any task name, e.g. `assemblePlayDebug` or `bundlePlayRelease`.
+
+> [!NOTE]
+> Signing credentials live in `keystore.properties`, which is deliberately not in the repo. Without it, debug builds are unaffected and release builds simply come out unsigned. To sign your own release builds, copy [keystore.properties.example](keystore.properties.example) to `keystore.properties` and fill it in.
+
 ## Screenshots
 <p align="center">
 <img src="screenshots/actively-printing.png" width="180">

@@ -38,11 +38,16 @@ android {
     }
 
     signingConfigs {
+        // Each value is applied only when present. keystore.properties is not in the repo, so on a
+        // fresh clone all four are absent; a plain `as String` cast failed the entire configuration
+        // phase with "null cannot be cast to non-null type kotlin.String", which made even a debug
+        // build impossible. Left unset the config just yields unsigned release artifacts, while
+        // debug builds keep working off the debug build type's own signing config.
         create("release") {
-            keyAlias = keystoreProperties["keyAlias"] as String
-            keyPassword = keystoreProperties["keyPassword"] as String
-            storeFile = file(keystoreProperties["storeFile"] as String)
-            storePassword = keystoreProperties["storePassword"] as String
+            (keystoreProperties["keyAlias"] as String?)?.let { keyAlias = it }
+            (keystoreProperties["keyPassword"] as String?)?.let { keyPassword = it }
+            (keystoreProperties["storeFile"] as String?)?.let { storeFile = file(it) }
+            (keystoreProperties["storePassword"] as String?)?.let { storePassword = it }
         }
         create("upload") {
             (keystoreProperties["uploadKeyAlias"] as String?)?.let { keyAlias = it }
@@ -110,7 +115,11 @@ android {
     }
 
     if (!keystorePropertiesFile.exists()) {
-        logger.warn("Warning: keystore.properties file not found. Skipping signing configuration for withGPlay.")
+        logger.warn(
+            "Warning: keystore.properties not found. Release and upload signing are unconfigured, " +
+                "so the direct/play release artifacts will be unsigned. Debug builds are unaffected. " +
+                "See keystore.properties.example."
+        )
     }
 }
 
