@@ -797,8 +797,16 @@ class BambuMqttClient(
         if (extruderInfo != null) {
             // Recompute from scratch: default to "255" (nothing loaded) so unloading
             // filament clears the active slot instead of latching the last value.
+            // On dual-nozzle printers (H2D/X2D) each extruder reports its own snow, so prefer
+            // the active extruder (device.extruder.state bits 4-7). Otherwise the slot loaded
+            // on the idle nozzle (e.g. the external spool) could be highlighted as active.
+            val extruderState = print.optJSONObject("device")?.optJSONObject("extruder")
+            val activeExtruder = if (extruderState != null && extruderState.has("state")) {
+                (extruderState.optInt("state") shr 4) and 0xF
+            } else null
             var sawSnow = false
             var decoded = "255"
+            var firstLoaded: String? = null
             for (i in 0 until extruderInfo.length()) {
                 val info = extruderInfo.getJSONObject(i)
                 if (!info.has("snow")) continue // no signal in this entry; don't clobber
@@ -807,9 +815,16 @@ class BambuMqttClient(
                 if (snow < 0 || (snow and 0xFFFF) == 0xFFFF) continue // unset / nothing loaded
                 val amsId = (snow ushr 8) and 0xFF
                 val slot = snow and 0xFF
-                decoded = if (amsId == 0xFF) "254" else (amsId * 4 + slot).toString()
-                break
+                val value = if (amsId == 0xFF) "254" else (amsId * 4 + slot).toString()
+                if (firstLoaded == null) firstLoaded = value
+                if (activeExtruder == null || info.optInt("id", i) == activeExtruder) {
+                    decoded = value
+                    break
+                }
             }
+            // Active extruder has nothing loaded (or no state reported): keep the old
+            // behaviour and fall back to the first extruder that has filament loaded.
+            if (decoded == "255" && firstLoaded != null) decoded = firstLoaded
             // Only latch onto the snow signal (and overwrite trayNow) once we've actually
             // seen a snow value. A snow-less extruder.info must not disable ams.tray_now,
             // or an X1/P that emits one would freeze trayNow at its first reading.
