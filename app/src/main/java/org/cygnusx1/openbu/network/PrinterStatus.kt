@@ -14,12 +14,22 @@ data class AmsTray(
         else null
 }
 
+// One external spool holder on a printer that reports several (X2D/H2D "vir_slot" array).
+// id is the virtual tray id: "254" = left nozzle, "255" = right nozzle. tray == null = empty.
+data class ExtSpool(
+    val id: String,
+    val tray: AmsTray? = null,
+)
+
 data class AmsUnit(
     val id: String = "",
     val model: String = "",
     val temp: String = "",
     val humidity: String = "",
     val trays: List<AmsTray> = emptyList(),
+    // Extruder this AMS feeds (0 = right, 1 = left), from bits 8-11 of ams[].info.
+    // Only meaningful on dual-nozzle printers.
+    val nozzleId: Int? = null,
 )
 
 data class NozzleInfo(
@@ -62,6 +72,12 @@ data class PrinterStatus(
     val bigFan2Speed: Int = 0,
     val amsUnits: List<AmsUnit> = emptyList(),
     val vtTray: AmsTray? = null,
+    // All external spools when the printer reports more than one (X2D/H2D); empty otherwise,
+    // in which case the single vtTray above is used.
+    val extSpools: List<ExtSpool> = emptyList(),
+    // Id of the external spool feeding the active extruder, when trayNow == "254" on a
+    // multi-spool printer.
+    val activeExtSpoolId: String? = null,
     // Global index of the tray currently loaded into the toolhead, from ams.tray_now.
     // For AMS slots: amsUnitId * 4 + slotIndex. 254 = external spool, 255 = none loaded.
     val trayNow: String = "255",

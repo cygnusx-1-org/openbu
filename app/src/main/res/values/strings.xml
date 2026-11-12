@@ -137,6 +137,11 @@
     <string name="chamber_light">Chamber Light</string>
     <string name="empty">Empty</string>
     <string name="external_spool">External Spool</string>
+    <string name="external_spool_left">External Spool (Left)</string>
+    <string name="external_spool_right">External Spool (Right)</string>
+    <string name="ams_nozzle_label">%1$s · %2$s</string>
+    <string name="nozzle_side_left">Left</string>
+    <string name="nozzle_side_right">Right</string>
     <string name="nozzle">Nozzle</string>
     <string name="left_nozzle">Left Nozzle</string>
     <string name="right_nozzle">Right Nozzle</string>

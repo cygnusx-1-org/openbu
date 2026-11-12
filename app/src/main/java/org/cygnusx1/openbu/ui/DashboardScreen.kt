@@ -165,7 +165,7 @@ fun DashboardScreen(
     onSetFanSpeed: (Int, Int) -> Unit,
     onPrinterActionCommand: (String) -> Unit,
     filaments: List<FilamentProfile> = emptyList(),
-    onSetFilament: (Int, Int, FilamentProfile, String) -> Unit = { _, _, _, _ -> },
+    onSetFilament: (Int, Int, FilamentProfile, String, Int?) -> Unit = { _, _, _, _, _ -> },
     relayEnabled: Boolean = false,
     onRelayEnabledChanged: (Boolean) -> Unit = {},
     isRelayed: Boolean = false,
@@ -190,7 +190,7 @@ fun DashboardScreen(
             currentTrayInfoIdx = target.trayInfoIdx,
             filaments = filaments,
             onConfirm = { profile, colorHex ->
-                onSetFilament(target.amsId, target.trayId, profile, colorHex)
+                onSetFilament(target.amsId, target.trayId, profile, colorHex, target.extSpoolId)
                 filamentEditTarget = null
             },
             onDismiss = { filamentEditTarget = null },
@@ -824,8 +824,20 @@ fun DashboardScreen(
         val fullWidthAms = printerStatus.amsUnits.filter { it.model.isEmpty() || it.model.equals("AMS", ignoreCase = true) }
         val halfWidthAms = printerStatus.amsUnits.filter { it.model.isNotEmpty() && !it.model.equals("AMS", ignoreCase = true) }
 
+        // Dual-nozzle printers (two external spool holders): tag each AMS with the nozzle it
+        // feeds (0 = right, 1 = left), and hide the external spool of a nozzle fed by an AMS.
+        val dualNozzle = printerStatus.extSpools.size >= 2
+        val leftLabel = stringResource(R.string.nozzle_side_left)
+        val rightLabel = stringResource(R.string.nozzle_side_right)
+        fun amsNozzleLabel(unit: AmsUnit): String? = if (!dualNozzle) null else when (unit.nozzleId) {
+            0 -> rightLabel
+            1 -> leftLabel
+            else -> null
+        }
+        val amsNozzles = printerStatus.amsUnits.mapNotNull { it.nozzleId }.toSet()
+
         for (amsUnit in fullWidthAms) {
-            AmsCard(amsUnit, trayNow = printerStatus.trayNow) { tray ->
+            AmsCard(amsUnit, trayNow = printerStatus.trayNow, nozzleLabel = amsNozzleLabel(amsUnit)) { tray ->
                 filamentEditTarget = FilamentEditTarget(
                     amsId = amsUnit.id.toIntOrNull() ?: 0,
                     trayId = tray.id.toIntOrNull() ?: 0,
@@ -837,63 +849,88 @@ fun DashboardScreen(
             Spacer(modifier = Modifier.height(VerticalCardPadding))
         }
 
-        // Half-width items: AMS-HT units + External Spool, paired into rows
-        var halfIndex = 0
-        while (halfIndex < halfWidthAms.size) {
+        // External spools: one per nozzle on dual-nozzle printers (X2D/H2D, vir_slot ids
+        // 254 = left, 255 = right — Left first to match the nozzle cards), otherwise the
+        // single vt_tray / vir_slot spool. A holder whose nozzle has an AMS attached is hidden,
+        // unless it is the one currently loaded.
+        val extSpoolItems: List<ExtSpoolItem> = if (dualNozzle) {
+            printerStatus.extSpools.sortedBy { it.id }.filter { spool ->
+                val nozzle = when (spool.id) {
+                    "254" -> 1
+                    "255" -> 0
+                    else -> null
+                }
+                val inUse = printerStatus.trayNow == "254" && printerStatus.activeExtSpoolId == spool.id
+                nozzle == null || nozzle !in amsNozzles || inUse
+            }.map { spool ->
+                ExtSpoolItem(
+                    tray = spool.tray,
+                    title = when (spool.id) {
+                        "254" -> stringResource(R.string.external_spool_left)
+                        "255" -> stringResource(R.string.external_spool_right)
+                        else -> stringResource(R.string.external_spool)
+                    },
+                    isActive = printerStatus.trayNow == "254" && printerStatus.activeExtSpoolId == spool.id,
+                    target = FilamentEditTarget(
+                        amsId = 255,
+                        trayId = 254,
+                        type = spool.tray?.trayType ?: "",
+                        color = spool.tray?.trayColor ?: "",
+                        trayInfoIdx = spool.tray?.trayInfoIdx ?: "",
+                        extSpoolId = spool.id.toIntOrNull(),
+                    ),
+                )
+            }
+        } else {
+            listOf(
+                ExtSpoolItem(
+                    tray = printerStatus.vtTray,
+                    title = stringResource(R.string.external_spool),
+                    isActive = printerStatus.trayNow == "254",
+                    target = FilamentEditTarget(
+                        amsId = 255,
+                        trayId = 254,
+                        type = printerStatus.vtTray?.trayType ?: "",
+                        color = printerStatus.vtTray?.trayColor ?: "",
+                        trayInfoIdx = printerStatus.vtTray?.trayInfoIdx ?: "",
+                    ),
+                )
+            )
+        }
+
+        fun halfAmsCard(unit: AmsUnit): @Composable (Modifier) -> Unit = { mod ->
+            AmsCard(unit, modifier = mod, trayNow = printerStatus.trayNow, nozzleLabel = amsNozzleLabel(unit)) { tray ->
+                filamentEditTarget = FilamentEditTarget(
+                    amsId = unit.id.toIntOrNull() ?: 0,
+                    trayId = tray.id.toIntOrNull() ?: 0,
+                    type = tray.trayType,
+                    color = tray.trayColor,
+                    trayInfoIdx = tray.trayInfoIdx,
+                )
+            }
+        }
+        fun extCard(item: ExtSpoolItem): @Composable (Modifier) -> Unit = { mod ->
+            ExternalSpoolCard(item.tray, title = item.title, modifier = mod, isActive = item.isActive) {
+                filamentEditTarget = item.target
+            }
+        }
+
+        // Half-width items: AMS-HT units + External Spool(s), paired into rows. A single
+        // external spool pairs with an odd last AMS-HT (or goes full-width); two external
+        // spools always share their own row; none (AMS on both nozzles) adds nothing.
+        val amsHalfCards = halfWidthAms.map { halfAmsCard(it) }
+        val extHalfCards = extSpoolItems.map { extCard(it) }
+        val halfRows = if (extHalfCards.size == 1) {
+            (amsHalfCards + extHalfCards).chunked(2)
+        } else {
+            amsHalfCards.chunked(2) + extHalfCards.chunked(2)
+        }
+        for (rowCards in halfRows) {
             Row(
                 modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Max),
                 horizontalArrangement = Arrangement.spacedBy(HorizontalCardPadding),
             ) {
-                val unit = halfWidthAms[halfIndex]
-                AmsCard(unit, modifier = Modifier.weight(1f).fillMaxHeight(), trayNow = printerStatus.trayNow) { tray ->
-                    filamentEditTarget = FilamentEditTarget(
-                        amsId = unit.id.toIntOrNull() ?: 0,
-                        trayId = tray.id.toIntOrNull() ?: 0,
-                        type = tray.trayType,
-                        color = tray.trayColor,
-                        trayInfoIdx = tray.trayInfoIdx,
-                    )
-                }
-                halfIndex++
-                if (halfIndex < halfWidthAms.size) {
-                    val unit2 = halfWidthAms[halfIndex]
-                    AmsCard(unit2, modifier = Modifier.weight(1f).fillMaxHeight(), trayNow = printerStatus.trayNow) { tray ->
-                        filamentEditTarget = FilamentEditTarget(
-                            amsId = unit2.id.toIntOrNull() ?: 0,
-                            trayId = tray.id.toIntOrNull() ?: 0,
-                            type = tray.trayType,
-                            color = tray.trayColor,
-                            trayInfoIdx = tray.trayInfoIdx,
-                        )
-                    }
-                    halfIndex++
-                } else {
-                    // Pair last AMS-HT with External Spool
-                    ExternalSpoolCard(printerStatus.vtTray, modifier = Modifier.weight(1f).fillMaxHeight(), isActive = printerStatus.trayNow == "254") {
-                        filamentEditTarget = FilamentEditTarget(
-                            amsId = 255,
-                            trayId = 254,
-                            type = printerStatus.vtTray?.trayType ?: "",
-                            color = printerStatus.vtTray?.trayColor ?: "",
-                            trayInfoIdx = printerStatus.vtTray?.trayInfoIdx ?: "",
-                        )
-                    }
-                    halfIndex++ // signal we used external spool
-                }
-            }
-            Spacer(modifier = Modifier.height(VerticalCardPadding))
-        }
-
-        // External spool — full-width if not already paired above
-        if (halfWidthAms.size % 2 == 0) {
-            ExternalSpoolCard(printerStatus.vtTray, isActive = printerStatus.trayNow == "254") {
-                filamentEditTarget = FilamentEditTarget(
-                    amsId = 255,
-                    trayId = 254,
-                    type = printerStatus.vtTray?.trayType ?: "",
-                    color = printerStatus.vtTray?.trayColor ?: "",
-                    trayInfoIdx = printerStatus.vtTray?.trayInfoIdx ?: "",
-                )
+                rowCards.forEach { card -> card(Modifier.weight(1f).fillMaxHeight()) }
             }
             Spacer(modifier = Modifier.height(VerticalCardPadding))
         }
@@ -1133,8 +1170,16 @@ private fun IconStatusCard(
 }
 
 @Composable
-private fun AmsCard(amsUnit: AmsUnit, modifier: Modifier = Modifier, trayNow: String = "255", onTrayClick: (AmsTray) -> Unit) {
-    val amsLabel = amsUnit.model.ifEmpty { "AMS" }
+private fun AmsCard(
+    amsUnit: AmsUnit,
+    modifier: Modifier = Modifier,
+    trayNow: String = "255",
+    nozzleLabel: String? = null,
+    onTrayClick: (AmsTray) -> Unit,
+) {
+    val amsLabel = amsUnit.model.ifEmpty { "AMS" }.let { name ->
+        if (nozzleLabel != null) stringResource(R.string.ams_nozzle_label, name, nozzleLabel) else name
+    }
     val unitId = amsUnit.id.toIntOrNull() ?: 0
     val activeTrayNow = trayNow.toIntOrNull()
     Card(
@@ -1277,7 +1322,13 @@ private fun ActiveSlotRing(isActive: Boolean, content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun ExternalSpoolCard(vtTray: AmsTray?, modifier: Modifier = Modifier, isActive: Boolean = false, onClick: () -> Unit) {
+private fun ExternalSpoolCard(
+    vtTray: AmsTray?,
+    title: String,
+    modifier: Modifier = Modifier,
+    isActive: Boolean = false,
+    onClick: () -> Unit,
+) {
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -1288,7 +1339,7 @@ private fun ExternalSpoolCard(vtTray: AmsTray?, modifier: Modifier = Modifier, i
                 .padding(horizontal = 16.dp, vertical = 12.dp),
         ) {
             Text(
-                text = stringResource(R.string.external_spool),
+                text = title,
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -1893,6 +1944,15 @@ private data class FilamentEditTarget(
     val type: String,
     val color: String,
     val trayInfoIdx: String,
+    // vir_slot id (254/255) when editing one of two external spools on a dual-nozzle printer
+    val extSpoolId: Int? = null,
+)
+
+private class ExtSpoolItem(
+    val tray: AmsTray?,
+    val title: String,
+    val isActive: Boolean,
+    val target: FilamentEditTarget,
 )
 
 private fun parseHexColor(hex: String): Color {
