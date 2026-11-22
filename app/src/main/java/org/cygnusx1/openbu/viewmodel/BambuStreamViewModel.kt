@@ -1118,6 +1118,30 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    private var wasBackgrounded = false
+
+    fun onAppStopped() {
+        wasBackgrounded = true
+    }
+
+    /**
+     * Called when the activity becomes visible again. The printer's RTSP(S) session drops while
+     * the app is in the background and the existing player never recovers on its own (black
+     * stream until a manual Reconnect), so rebuild the RTSP players whenever we come back to a
+     * session that has a stream.
+     */
+    fun onAppStarted() {
+        if (!wasBackgrounded) return
+        wasBackgrounded = false
+        val state = _connectionState.value
+        if (state != ConnectionState.Connected && state != ConnectionState.Connecting) return
+        val hasStream = _internalRtspUrl.value.isNotBlank() ||
+            (_rtspEnabled.value && _rtspUrl.value.isNotBlank())
+        if (!hasStream) return
+        Log.d("AutoReconnect", "onAppStarted: rebuilding RTSP players after resuming")
+        _rtspReconnectKey.value++
+    }
+
     fun disconnect() {
         Log.d("AutoReconnect", "disconnect() called")
         userDisconnected = true

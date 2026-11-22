@@ -14,7 +14,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import androidx.compose.runtime.DisposableEffect
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleResumeEffect
+import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -258,6 +260,21 @@ class MainActivity : ComponentActivity() {
                     onDispose { fullscreenVlcPlayer?.release() }
                 }
                 val fullscreenVlcContent = rememberVlcContent(fullscreenVlcPlayer)
+
+                // Stop the ExoPlayer streams while in the background (the printer drops the RTSP
+                // session anyway, and this frees its stream slot), and have the view model rebuild
+                // all RTSP players when the app becomes visible again. Start/stop rather than
+                // resume/pause so dialogs or the notification shade don't restart the stream.
+                LifecycleStartEffect(internalRtspPlayer, rtspPlayer) {
+                    viewModel.onAppStarted()
+                    onStopOrDispose {
+                        if (lifecycle.currentState < Lifecycle.State.STARTED) {
+                            viewModel.onAppStopped()
+                            internalRtspPlayer?.stop()
+                            rtspPlayer?.stop()
+                        }
+                    }
+                }
 
                 // Resume VLC players when returning from background
                 LifecycleResumeEffect(externalVlcPlayer, fullscreenVlcPlayer) {
