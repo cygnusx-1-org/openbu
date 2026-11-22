@@ -1110,6 +1110,8 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
             // Tear down the stale connection so connect() doesn't bail on a lingering Connected
             // state and so the dead sockets are closed before we rebuild.
             cleanupConnections()
+            // Bump so the RTSP players are rebuilt
+            _rtspReconnectKey.value++
             _connectionState.value = ConnectionState.Disconnected
             _isReconnecting.value = true
             connect(ip, code, serial)
