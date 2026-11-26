@@ -295,22 +295,30 @@ class BambuMqttClient(
         }
     }
 
-    fun setFilament(amsId: Int, trayId: Int, profile: FilamentProfile, colorHex: String) {
+    fun setFilament(amsId: Int, trayId: Int, profile: FilamentProfile, colorHex: String, extSpoolId: Int? = null) {
         val out = socketOutput ?: return
         // ams_id is the hardware ID as reported by the printer:
         //   0-3 for standard AMS, 128+ for AMS-HT/Lite, 255 for external spool
         // tray_id: slot index within the AMS unit (0-3), or 254 for external spool
         // BambuStudio sends both slot_id and tray_id; for physical AMS, tray_id = slot_id;
         // for virtual trays (external spool), tray_id = 254.
+        // Dual-nozzle printers (X2D/H2D) have two external spools addressed by their
+        // vir_slot id (254 = left, 255 = right) as both ams_id and tray_id, with slot_id 0.
         val isVirtual = amsId == 255
         val tagTrayId = if (isVirtual) 254 else trayId
         val json = JSONObject().apply {
             put("print", JSONObject().apply {
                 put("sequence_id", "0")
                 put("command", "ams_filament_setting")
-                put("ams_id", amsId)
-                put("slot_id", trayId)
-                put("tray_id", tagTrayId)
+                if (extSpoolId != null) {
+                    put("ams_id", extSpoolId)
+                    put("slot_id", 0)
+                    put("tray_id", extSpoolId)
+                } else {
+                    put("ams_id", amsId)
+                    put("slot_id", trayId)
+                    put("tray_id", tagTrayId)
+                }
                 put("tray_info_idx", profile.filamentId)
                 put("tray_type", profile.type)
                 put("tray_color", colorHex)
@@ -344,6 +352,28 @@ class BambuMqttClient(
         try {
             val topic = "device/$serialNumber/request"
             if (debugLogging) Log.d(TAG, "Publishing nozzle_temper=$temp to $topic")
+            val packet = buildPublishPacket(topic, json.toString())
+            synchronized(out) {
+                out.write(packet)
+                out.flush()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to publish nozzle temperature", e)
+        }
+    }
+
+    fun setNozzleTemperature(tool: Int, temp: Int) {
+        val out = socketOutput ?: return
+        val json = JSONObject().apply {
+            put("print", JSONObject().apply {
+                put("sequence_id", "0")
+                put("command", "gcode_line")
+                put("param", "M104 T$tool S$temp\n")
+            })
+        }
+        try {
+            val topic = "device/$serialNumber/request"
+            if (debugLogging) Log.d(TAG, "Publishing nozzle_temper=$temp tool=$tool to $topic")
             val packet = buildPublishPacket(topic, json.toString())
             synchronized(out) {
                 out.write(packet)
@@ -671,6 +701,7 @@ class BambuMqttClient(
         var amsUnits = current.amsUnits
         var vtTray = current.vtTray
         var trayNow = current.trayNow
+        var activeExtSpoolId = current.activeExtSpoolId
 
         val vtTrayObj = print.optJSONObject("vt_tray")
         if (vtTrayObj != null) {
@@ -693,26 +724,37 @@ class BambuMqttClient(
             }
         }
 
-        // H2-series printers report the external spool as a "vir_slot" array (id 255)
-        // instead of the X1/P "vt_tray" object (id 254). Map the first entry into the
-        // same vtTray slot the UI already renders.
+        // H2/X2-series printers report the external spool(s) as a "vir_slot" array instead
+        // of the X1/P "vt_tray" object. Single-nozzle models send one entry (id 255), which
+        // maps into the same vtTray slot the UI already renders. Dual-nozzle models (X2D/H2D)
+        // send one entry per nozzle: id 254 = left, 255 = right. The array always carries
+        // every holder, so an empty tray_type there means the holder really is empty.
+        var extSpools = current.extSpools
         val virSlotArr = print.optJSONArray("vir_slot")
         if (virSlotArr != null && virSlotArr.length() > 0) {
-            val virObj = virSlotArr.getJSONObject(0)
-            val trayType = virObj.optString("tray_type", "")
-            vtTray = if (trayType.isNotEmpty()) {
-                AmsTray(
-                    id = virObj.optString("id", "255"),
-                    trayType = trayType,
-                    trayColor = virObj.optString("tray_color", ""),
-                    trayInfoIdx = virObj.optString("tray_info_idx", ""),
-                    remainPercent = virObj.optInt("remain", -1),
-                    trayWeight = virObj.optString("tray_weight", "0").toIntOrNull() ?: 0,
+            val spools = (0 until virSlotArr.length()).map { i ->
+                val virObj = virSlotArr.getJSONObject(i)
+                val id = virObj.optString("id", "255")
+                val trayType = virObj.optString("tray_type", "")
+                ExtSpool(
+                    id = id,
+                    tray = if (trayType.isNotEmpty()) AmsTray(
+                        id = id,
+                        trayType = trayType,
+                        trayColor = virObj.optString("tray_color", ""),
+                        trayInfoIdx = virObj.optString("tray_info_idx", ""),
+                        remainPercent = virObj.optInt("remain", -1),
+                        trayWeight = virObj.optString("tray_weight", "0").toIntOrNull() ?: 0,
+                    ) else null,
                 )
+            }
+            if (spools.size >= 2) {
+                extSpools = spools
             } else {
-                // Empty tray_type: keep the latched value rather than clobbering a
-                // previously-good spool with null on a partial report.
-                vtTray
+                extSpools = emptyList()
+                // Single holder: keep the latched value on an empty tray_type rather than
+                // clobbering a previously-good spool with null on a partial report.
+                vtTray = spools[0].tray ?: vtTray
             }
         }
 
@@ -758,6 +800,10 @@ class BambuMqttClient(
                             }
                         },
                         trays = trays,
+                        // info is a hex string; bits 8-11 hold the extruder the AMS is
+                        // attached to on dual-nozzle printers (e.g. "10001103" -> 1 = left).
+                        nozzleId = amsObj.optString("info", "").toLongOrNull(16)
+                            ?.let { ((it shr 8) and 0xF).toInt() },
                     ))
                 }
                 amsUnits = units
@@ -775,8 +821,17 @@ class BambuMqttClient(
         if (extruderInfo != null) {
             // Recompute from scratch: default to "255" (nothing loaded) so unloading
             // filament clears the active slot instead of latching the last value.
+            // On dual-nozzle printers (H2D/X2D) each extruder reports its own snow, so prefer
+            // the active extruder (device.extruder.state bits 4-7). Otherwise the slot loaded
+            // on the idle nozzle (e.g. the external spool) could be highlighted as active.
+            val extruderState = print.optJSONObject("device")?.optJSONObject("extruder")
+            val activeExtruder = if (extruderState != null && extruderState.has("state")) {
+                (extruderState.optInt("state") shr 4) and 0xF
+            } else null
             var sawSnow = false
-            var decoded = "255"
+            // (decoded trayNow, extruder id) of the chosen and of the first loaded extruder
+            var chosen: Pair<String, Int>? = null
+            var firstLoaded: Pair<String, Int>? = null
             for (i in 0 until extruderInfo.length()) {
                 val info = extruderInfo.getJSONObject(i)
                 if (!info.has("snow")) continue // no signal in this entry; don't clobber
@@ -785,15 +840,29 @@ class BambuMqttClient(
                 if (snow < 0 || (snow and 0xFFFF) == 0xFFFF) continue // unset / nothing loaded
                 val amsId = (snow ushr 8) and 0xFF
                 val slot = snow and 0xFF
-                decoded = if (amsId == 0xFF) "254" else (amsId * 4 + slot).toString()
-                break
+                // 0xFE / 0xFF are the two virtual (external spool) tray ids
+                val value = if (amsId >= 0xFE) "254" else (amsId * 4 + slot).toString()
+                val extruderId = info.optInt("id", i)
+                if (firstLoaded == null) firstLoaded = value to extruderId
+                if (activeExtruder == null || extruderId == activeExtruder) {
+                    chosen = value to extruderId
+                    break
+                }
             }
+            // Active extruder has nothing loaded (or no state reported): keep the old
+            // behaviour and fall back to the first extruder that has filament loaded.
+            val result = chosen ?: firstLoaded
             // Only latch onto the snow signal (and overwrite trayNow) once we've actually
             // seen a snow value. A snow-less extruder.info must not disable ams.tray_now,
             // or an X1/P that emits one would freeze trayNow at its first reading.
             if (sawSnow) {
                 usesExtruderSnow = true
-                trayNow = decoded
+                trayNow = result?.first ?: "255"
+                // Each nozzle can only feed from its own external spool holder:
+                // extruder 0 (right) <-> vir_slot 255, extruder 1 (left) <-> vir_slot 254.
+                activeExtSpoolId = if (result?.first == "254") {
+                    if (result.second == 1) "254" else "255"
+                } else null
             }
         }
 
@@ -826,6 +895,48 @@ class BambuMqttClient(
             } else current.hmsErrors
         } else current.hmsErrors
 
+        // Dual-nozzle printers (X2D/H2D) report per-nozzle data under device.extruder.info.
+        var nozzles = current.nozzles
+        if (extruderInfo != null && extruderInfo.length() > 0) {
+            val device = print.optJSONObject("device")
+            val extruderObj = device?.optJSONObject("extruder")
+            val previous = current.nozzles.associateBy { it.id }
+            // extruder.state packs the extruder count in the low 4 bits, active index in the next 4
+            val activeId = if (extruderObj != null && extruderObj.has("state")) {
+                (extruderObj.optInt("state") shr 4) and 0xF
+            } else {
+                current.nozzles.firstOrNull { it.active }?.id ?: 0
+            }
+            // device.nozzle.info holds the static type/diameter/wear per nozzle id
+            val nozzleInfo = mutableMapOf<Int, JSONObject>()
+            val nozzleArray = device?.optJSONObject("nozzle")?.optJSONArray("info")
+            if (nozzleArray != null) {
+                for (i in 0 until nozzleArray.length()) {
+                    val nozzle = nozzleArray.getJSONObject(i)
+                    nozzleInfo[nozzle.optInt("id", i)] = nozzle
+                }
+            }
+            val list = mutableListOf<NozzleInfo>()
+            for (i in 0 until extruderInfo.length()) {
+                val extruder = extruderInfo.getJSONObject(i)
+                val id = extruder.optInt("id", i)
+                val info = nozzleInfo[id]
+                val prev = previous[id]
+                // temp packs the current value in the low 16 bits, the target in the high 16 bits
+                val rawTemp = extruder.optInt("temp", -1)
+                list.add(NozzleInfo(
+                    id = id,
+                    temper = if (rawTemp >= 0) (rawTemp and 0xFFFF).toFloat() else prev?.temper,
+                    targetTemper = if (rawTemp >= 0) ((rawTemp shr 16) and 0xFFFF).toFloat() else prev?.targetTemper,
+                    type = info?.optString("type", "") ?: prev?.type ?: "",
+                    diameter = info?.optDouble("diameter", 0.0)?.toFloat() ?: prev?.diameter ?: 0f,
+                    wear = info?.optInt("wear", 0) ?: prev?.wear ?: 0,
+                    active = id == activeId,
+                ))
+            }
+            if (list.isNotEmpty()) nozzles = list
+        }
+
         val newStatus = PrinterStatus(
             gcodeState = gcodeState,
             gcodeFile = gcodeFile,
@@ -836,6 +947,7 @@ class BambuMqttClient(
             mcRemainingTime = mcRemainingTime,
             nozzleTemper = nozzleTemper,
             nozzleTargetTemper = nozzleTarget,
+            nozzles = nozzles,
             bedTemper = bedTemper,
             bedTargetTemper = bedTarget,
             chamberTemper = chamberTemper,
@@ -846,6 +958,8 @@ class BambuMqttClient(
             bigFan2Speed = bigFan2,
             amsUnits = amsUnits,
             vtTray = vtTray,
+            extSpools = extSpools,
+            activeExtSpoolId = activeExtSpoolId,
             trayNow = trayNow,
             spdLvl = spdLvl,
             skippedObjects = skippedObjects,

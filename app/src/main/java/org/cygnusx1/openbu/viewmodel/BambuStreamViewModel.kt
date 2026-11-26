@@ -705,6 +705,12 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    fun setNozzleTemperature(tool: Int, temp: Int) {
+        viewModelScope.launch(Dispatchers.IO) {
+            mqttClient?.setNozzleTemperature(tool, temp)
+        }
+    }
+
     fun setBedTemperature(temp: Int) {
         viewModelScope.launch(Dispatchers.IO) {
             mqttClient?.setBedTemperature(temp)
@@ -725,9 +731,9 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
-    fun setFilament(amsId: Int, trayId: Int, profile: FilamentProfile, colorHex: String) {
+    fun setFilament(amsId: Int, trayId: Int, profile: FilamentProfile, colorHex: String, extSpoolId: Int? = null) {
         viewModelScope.launch(Dispatchers.IO) {
-            mqttClient?.setFilament(amsId, trayId, profile, colorHex)
+            mqttClient?.setFilament(amsId, trayId, profile, colorHex, extSpoolId)
         }
     }
 

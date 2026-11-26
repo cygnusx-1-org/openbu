@@ -613,12 +613,13 @@ class MainActivity : ComponentActivity() {
                             },
                             onSetSpeedLevel = { viewModel.setSpeedLevel(it) },
                             onSetNozzleTemperature = { viewModel.setNozzleTemperature(it) },
+                            onSetNozzleTemperatureForTool = { tool, temp -> viewModel.setNozzleTemperature(tool, temp) },
                             onSetBedTemperature = { viewModel.setBedTemperature(it) },
                             onSetFanSpeed = { fan, pwm -> viewModel.setFanSpeed(fan, pwm) },
                             onPrinterActionCommand = { viewModel.sendPrinterActionCommand(it) },
                             filaments = filamentCatalog,
-                            onSetFilament = { amsId, trayId, profile, colorHex ->
-                                viewModel.setFilament(amsId, trayId, profile, colorHex)
+                            onSetFilament = { amsId, trayId, profile, colorHex, extSpoolId ->
+                                viewModel.setFilament(amsId, trayId, profile, colorHex, extSpoolId)
                             },
                             relayEnabled = dashRelayEnabled,
                             onRelayEnabledChanged = { viewModel.setRelayEnabled(it) },
