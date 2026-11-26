@@ -78,6 +78,7 @@ fun RtspStreamScreen(player: ExoPlayer?, isRelayed: Boolean = false) {
                         translationY = offsetY.floatValue
                     },
             )
+            RtspStallIndicator(player)
         }
 
         if (isRelayed) {

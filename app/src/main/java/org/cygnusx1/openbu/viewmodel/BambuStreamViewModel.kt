@@ -1116,6 +1116,24 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    private var wasBackgrounded = false
+
+    fun onAppStopped() {
+        wasBackgrounded = true
+    }
+
+    fun onAppStarted() {
+        if (!wasBackgrounded) return
+        wasBackgrounded = false
+
+        val hasStream = _internalRtspUrl.value.isNotBlank() ||
+            (_rtspEnabled.value && _rtspUrl.value.isNotBlank())
+
+        if (!hasStream) return
+        Log.d("AutoReconnect", "onAppStarted: rebuilding RTSP players after resuming")
+        _rtspReconnectKey.value++
+    }
+
     fun disconnect() {
         Log.d("AutoReconnect", "disconnect() called")
         userDisconnected = true

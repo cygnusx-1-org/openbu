@@ -1298,6 +1298,8 @@ private fun RtspStreamCard(player: ExoPlayer, onClick: () -> Unit, isRelayed: Bo
                     .background(Color.Black),
             )
 
+            RtspStallIndicator(player)
+
             if (isRelayed) {
                 Box(
                     modifier = Modifier
