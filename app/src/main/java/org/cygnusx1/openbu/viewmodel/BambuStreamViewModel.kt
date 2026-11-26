@@ -1110,8 +1110,6 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
             // Tear down the stale connection so connect() doesn't bail on a lingering Connected
             // state and so the dead sockets are closed before we rebuild.
             cleanupConnections()
-            // Bump so the RTSP players are rebuilt
-            _rtspReconnectKey.value++
             _connectionState.value = ConnectionState.Disconnected
             _isReconnecting.value = true
             connect(ip, code, serial)
@@ -1124,19 +1122,13 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         wasBackgrounded = true
     }
 
-    /**
-     * Called when the activity becomes visible again. The printer's RTSP(S) session drops while
-     * the app is in the background and the existing player never recovers on its own (black
-     * stream until a manual Reconnect), so rebuild the RTSP players whenever we come back to a
-     * session that has a stream.
-     */
     fun onAppStarted() {
         if (!wasBackgrounded) return
         wasBackgrounded = false
-        val state = _connectionState.value
-        if (state != ConnectionState.Connected && state != ConnectionState.Connecting) return
+
         val hasStream = _internalRtspUrl.value.isNotBlank() ||
             (_rtspEnabled.value && _rtspUrl.value.isNotBlank())
+
         if (!hasStream) return
         Log.d("AutoReconnect", "onAppStarted: rebuilding RTSP players after resuming")
         _rtspReconnectKey.value++
