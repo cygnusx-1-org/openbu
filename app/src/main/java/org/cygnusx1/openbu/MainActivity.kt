@@ -21,6 +21,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -31,6 +32,8 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.rtsp.RtspMediaSource
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.security.cert.X509Certificate
 import javax.net.ssl.SSLContext
@@ -148,9 +151,27 @@ class MainActivity : ComponentActivity() {
                 var showSkipObjects by rememberSaveable { mutableStateOf(false) }
                 val effectiveRtspUrl = if (rtspEnabled && rtspUrl.isNotBlank()) rtspUrl else ""
 
+                // Printers drop RTSP sessions after returning from the background, rebuild the player 
+                // whenever the stream is lost while visible.
+                val rtspRetryScope = rememberCoroutineScope()
+                val internalRtspRetry = remember { RtspRetryState() }
+                val externalRtspRetry = remember { RtspRetryState() }
+                fun scheduleRtspRetry(retry: RtspRetryState, tag: String) {
+                    if (retry.job?.isActive == true) return
+                    val delayMs = (2_000L shl retry.failures.coerceAtMost(4)).coerceAtMost(30_000L)
+                    retry.failures++
+                    Log.d(tag, "Stream lost, rebuilding player in ${delayMs}ms (attempt ${retry.failures})")
+                    retry.job = rtspRetryScope.launch {
+                        delay(delayMs)
+                        // While backgrounded the players are stopped on purpose; onAppStarted()
+                        // rebuilds them on return.
+                        if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) retry.key++
+                    }
+                }
+
                 // Helper to build an ExoPlayer for an RTSP/RTSPS URL
                 @OptIn(UnstableApi::class)
-                fun createRtspPlayer(url: String, tag: String): ExoPlayer {
+                fun createRtspPlayer(url: String, tag: String, retry: RtspRetryState): ExoPlayer {
                     val isRtsps = url.startsWith("rtsps://")
                     Log.d(tag, "Creating player: isRtsps=$isRtsps, url=$url")
                     val renderersFactory = DefaultRenderersFactory(this@MainActivity)
@@ -166,15 +187,18 @@ class MainActivity : ComponentActivity() {
                                     else -> "UNKNOWN($playbackState)"
                                 }
                                 Log.d(tag, "Playback state: $stateName")
+                                if (playbackState == Player.STATE_ENDED) scheduleRtspRetry(retry, tag)
                             }
                             override fun onPlayerError(error: PlaybackException) {
                                 Log.e(tag, "Player error: ${error.errorCodeName} (${error.errorCode})", error)
+                                scheduleRtspRetry(retry, tag)
                             }
                             override fun onIsPlayingChanged(isPlaying: Boolean) {
                                 Log.d(tag, "isPlaying=$isPlaying")
                             }
                             override fun onRenderedFirstFrame() {
                                 Log.d(tag, "First frame rendered")
+                                retry.failures = 0
                             }
                         })
                         val factory = RtspMediaSource.Factory().apply {
@@ -210,13 +234,13 @@ class MainActivity : ComponentActivity() {
 
                 // Internal RTSP player (non-P1 printer built-in camera) — always ExoPlayer
                 @OptIn(UnstableApi::class)
-                val internalRtspPlayer = remember(internalRtspUrl, rtspReconnectKey) {
+                val internalRtspPlayer = remember(internalRtspUrl, rtspReconnectKey, internalRtspRetry.key) {
                     if (internalRtspUrl.isNotBlank()) {
                         Log.d("RTSP-Internal", "Using ExoPlayer decoder for: $internalRtspUrl")
-                        createRtspPlayer(internalRtspUrl, "RTSP-Internal")
+                        createRtspPlayer(internalRtspUrl, "RTSP-Internal", internalRtspRetry)
                     } else null
                 }
-                DisposableEffect(internalRtspUrl, rtspReconnectKey) {
+                DisposableEffect(internalRtspUrl, rtspReconnectKey, internalRtspRetry.key) {
                     onDispose { internalRtspPlayer?.release() }
                 }
 
@@ -224,13 +248,13 @@ class MainActivity : ComponentActivity() {
                 // VLC does not support SOCKS5 proxy tunneling, so disable when both VLC and relay are active
                 val shouldDisableExternalRtsp = useVlcForRtsp && currentProxyConfig != null
                 @OptIn(UnstableApi::class)
-                val rtspPlayer = remember(effectiveRtspUrl, rtspReconnectKey, useVlcForRtsp, shouldDisableExternalRtsp) {
+                val rtspPlayer = remember(effectiveRtspUrl, rtspReconnectKey, externalRtspRetry.key, useVlcForRtsp, shouldDisableExternalRtsp) {
                     if (!shouldDisableExternalRtsp && !useVlcForRtsp && effectiveRtspUrl.isNotBlank()) {
                         Log.d("RTSP-External", "Using ExoPlayer decoder for: $effectiveRtspUrl")
-                        createRtspPlayer(effectiveRtspUrl, "RTSP-External")
+                        createRtspPlayer(effectiveRtspUrl, "RTSP-External", externalRtspRetry)
                     } else null
                 }
-                DisposableEffect(effectiveRtspUrl, rtspReconnectKey, useVlcForRtsp, shouldDisableExternalRtsp) {
+                DisposableEffect(effectiveRtspUrl, rtspReconnectKey, externalRtspRetry.key, useVlcForRtsp, shouldDisableExternalRtsp) {
                     onDispose { rtspPlayer?.release() }
                 }
                 val externalVlcPlayer = remember(effectiveRtspUrl, rtspReconnectKey, useVlcForRtsp, shouldDisableExternalRtsp) {
@@ -270,6 +294,8 @@ class MainActivity : ComponentActivity() {
                     onStopOrDispose {
                         if (lifecycle.currentState < Lifecycle.State.STARTED) {
                             viewModel.onAppStopped()
+                            internalRtspRetry.cancel()
+                            externalRtspRetry.cancel()
                             internalRtspPlayer?.stop()
                             rtspPlayer?.stop()
                         }
@@ -686,5 +712,20 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+}
+
+/**
+ * Per-player retry state for rebuilding an RTSP ExoPlayer after the stream is lost.
+ * Bumping [key] (a remember/DisposableEffect key) recreates the player.
+ */
+private class RtspRetryState {
+    var key by mutableStateOf(0)
+    var failures = 0
+    var job: Job? = null
+
+    fun cancel() {
+        job?.cancel()
+        job = null
     }
 }
